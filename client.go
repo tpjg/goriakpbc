@@ -246,52 +246,6 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 	return
 }
 
-// Reponse deserializes the data and returns a struct.
-func (c *Client) response_old(response interface{}) (err error) {
-	var pbmsg []byte
-
-	// Read the response from Riak
-	msgbuf, err := c.read(65536)
-	if err != nil {
-		return err
-	}
-	// Check the length
-	if len(msgbuf) < 5 {
-		return errors.New("Response length too short")
-	}
-	// Read the message length, read the rest of the message if necessary
-	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
-	for len(msgbuf) < (msglen + 4) {
-		msgadd, err := c.read(msglen)
-		if err != nil {
-			return err
-		}
-		msgbuf = append(msgbuf, msgadd...)
-	}
-	c.mu.Unlock() // Unlock the Mutex after reading the complete response
-
-	if msglen > 1 {
-		pbmsg = msgbuf[5:(msglen + 4)]
-	}
-
-	// Deserialize, by default the calling method should provide the expected RbpXXXResp
-	msgcode := msgbuf[4]
-	switch msgcode {
-	case messageCodes["RpbErrorResp"]:
-		errResp := &RpbErrorResp{}
-		err = proto.Unmarshal(pbmsg, errResp)
-		if err == nil {
-			err = errors.New(string(errResp.Errmsg))
-		}
-	case messageCodes["RpbPingResp"], messageCodes["RpbSetClientIdResp"],
-		messageCodes["RpbSetBucketResp"], messageCodes["RpbDelResp"]:
-		return nil
-	default:
-		err = proto.Unmarshal(pbmsg, response)
-	}
-	return err
-}
-
 // Ping the server
 func (c *Client) Ping() (err error) {
 	// Use hardcoded request, no need to serialize
