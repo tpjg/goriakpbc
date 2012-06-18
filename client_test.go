@@ -27,31 +27,6 @@ func TestPing(t *testing.T) {
 	assert.T(t, client.Ping() == nil)
 }
 
-func TestGetClientId(t *testing.T) {
-	return
-
-	client := setupConnection(t)
-	assert.T(t, client != nil)
-
-	response, err := client.Id()
-	assert.T(t, err == nil)
-	assert.T(t, response != "")
-}
-
-func TestSetClientId(t *testing.T) {
-	return
-
-	client := setupConnection(t)
-	assert.T(t, client != nil)
-
-	err := client.SetId("client_test.go")
-	assert.T(t, err == nil)
-
-	response, err := client.Id()
-	assert.T(t, err == nil)
-	assert.T(t, response == "client_test.go")
-}
-
 func TestGetServerVersion(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
