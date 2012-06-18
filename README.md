@@ -9,7 +9,7 @@ package main
 
 import (
 	"fmt"
-	"riak"
+	"github.com/tpjg/goriakpbc"
 )
 
 func main() {
@@ -33,6 +33,7 @@ func main() {
 ```
 
 The library is still a work in progress, the API should resemble that of the Ruby riak-client.
+To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
 ### Full documentation (including protobuf generated)
 
