@@ -31,7 +31,6 @@ type Client struct {
 	writeTimeout time.Duration
 }
 
-
 // Returns a new Client connection
 func New(addr string) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8}

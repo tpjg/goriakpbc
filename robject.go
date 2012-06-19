@@ -1,4 +1,3 @@
-
 package riak
 
 // A Riak link
@@ -30,7 +29,6 @@ type RObject struct {
 	conflict    bool
 	Siblings    []Sibling
 }
-
 
 // Store an RObject
 func (obj *RObject) Store() (err error) {

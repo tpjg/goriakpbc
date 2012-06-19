@@ -1,4 +1,3 @@
-
 package riak
 
 // Implements access to a bucket and its properties
@@ -8,7 +7,6 @@ type Bucket struct {
 	nval      uint32
 	allowMult bool
 }
-
 
 // Return the nval property of a bucket
 func (b *Bucket) NVal() uint32 {

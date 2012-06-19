@@ -353,7 +353,7 @@ func TestMapReduce(t *testing.T) {
 	//q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [JSON.parse(v.values[0].data)]; }\"}}]}"
 	q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [v]; }\"}}]}"
 
-	mr, err := client.MapReduce(q)
+	mr, err := client.RunMapReduce(q)
 	assert.T(t, err == nil)
 	assert.T(t, len(mr) == 1)
 }
