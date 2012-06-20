@@ -325,7 +325,7 @@ func TestBigObject(t *testing.T) {
 	assert.T(t, err == nil)
 }
 
-func TestMapReduce(t *testing.T) {
+func TestRunMapReduce(t *testing.T) {
 	// Preparations
 	client := setupConnection(t)
 	assert.T(t, client != nil)
@@ -356,4 +356,37 @@ func TestMapReduce(t *testing.T) {
 	mr, err := client.RunMapReduce(q)
 	assert.T(t, err == nil)
 	assert.T(t, len(mr) == 1)
+}
+
+func TestMapReduce(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+	bucket := client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+	// Create object 1
+	obj1 := bucket.New("mrobj1")
+	assert.T(t, obj1 != nil)
+	obj1.ContentType = "application/json"
+	obj1.Data = []byte("{\"k\":\"v\"}")
+	err := obj1.Store()
+	assert.T(t, err == nil)
+	// Create object 2
+	obj2 := bucket.New("mrobj2")
+	assert.T(t, obj2 != nil)
+	obj2.ContentType = "application/json"
+	obj2.Data = []byte("{\"k\":\"v2\"}")
+	err = obj2.Store()
+	assert.T(t, err == nil)
+	// Link them
+	obj1.LinkTo(obj2, "test")
+	obj1.Store()
+
+	mr := client.MapReduce()
+	mr.Add("client_test.go", "mrobj1")
+	//mr.LinkBucket("bucketname", false)
+	mr.Map("function(v) {return [v];}", true)
+	res, err := mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
 }

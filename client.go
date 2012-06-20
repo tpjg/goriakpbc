@@ -202,6 +202,15 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 		}
 		response = resp
 		return
+	} else if msgcode == messageCodes["RpbErrorResp"] {
+		errResp := &RpbErrorResp{}
+		err = proto.Unmarshal(pbmsg, errResp)
+		if err == nil {
+			err = errors.New(string(errResp.Errmsg))
+		} else {
+			err = errors.New(string("Cannot deserialize error response from Riak"))
+		}
+		return nil, err
 	} else {
 		return nil, err
 	}
