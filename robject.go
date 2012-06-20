@@ -1,5 +1,9 @@
 package riak
 
+import (
+	"errors"
+)
+
 // A Riak link
 type Link struct {
 	Bucket string
@@ -131,7 +135,7 @@ func (obj *RObject) setContent(resp *RpbGetResp) {
 				obj.Siblings[i].Indexes[string(index.Key)] = string(index.Value)
 			}
 		}
-	} else {
+	} else if len(resp.Content) == 1 {
 		// No conflict, set the fields in object directly
 		obj.conflict = false
 		obj.ContentType = string(resp.Content[0].ContentType)
@@ -174,6 +178,10 @@ func (b *Bucket) Get(key string) (obj *RObject, err error) {
 	err = b.client.response(resp)
 	if err != nil {
 		return nil, err
+	}
+	// If no Content is returned then the object was  not found
+	if len(resp.Content) == 0 {
+		return &RObject{}, errors.New("Object not found")
 	}
 	// Create a new object and set the fields
 	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock}
