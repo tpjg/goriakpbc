@@ -53,7 +53,7 @@ For example the following Ruby/Ripple class:
 can be mapped to the following Go class:
 ```go
     type Device struct {
-        Download_enabled bool    "download_enabled"
+        DownloadEnabled  bool    "download_enabled"
         Ip               string  "ip"
         Description      string  "description"
         RiakModel        riak.Model
