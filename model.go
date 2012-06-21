@@ -39,7 +39,7 @@ if the Ripple class above would have a "property :Ip, String").
 type Model struct {
 	client  *Client
 	bucket  *Bucket
-	key     string
+	Key     string
 	robject *RObject
 }
 
@@ -144,7 +144,7 @@ func (c *Client) Get(bucketname string, key string, dest interface{}) (err error
 		}
 	}
 	// Set the values in the RiakModel field
-	model := &Model{client: c, bucket: bucket, key: key, robject: obj}
+	model := &Model{client: c, bucket: bucket, Key: key, robject: obj}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
@@ -185,7 +185,8 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	// and fields and set the RObject field to nil.
 	model.client = c
 	model.bucket = bucket
-	model.key = key
+	model.Key = key
+	vobj.Set(mv)
 	
 	return
 }
