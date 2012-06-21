@@ -94,4 +94,4 @@ err = client.Get("devices", "abcdefghijklm", &dev)
 
 ### Licensing
 
-goriakpbc is distributed under the Apache license, see `LICENSE` file or `http://www.apache.org/licenses/LICENSE-2.0` for details.
+goriakpbc is distributed under the Apache license, see `LICENSE.txt` file or http://www.apache.org/licenses/LICENSE-2.0 for details.

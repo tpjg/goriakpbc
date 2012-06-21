@@ -1,6 +1,6 @@
 /*
-	Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb.
-	It implements a connection to Riak using protobuf.
+Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb.
+It implements a connection to Riak using protobuf.
 */
 package riak
 
@@ -13,12 +13,12 @@ import (
 )
 
 /*
-	To generate the necessary protobuf interface types, do:
-	git clone https://github.com/basho/riak_pb.git || pushd riak_pb ; git pull ; popd
-	cat riak_pb/src/riak.proto riak_pb/src/riak_kv.proto | grep -v import >riak.proto
-	protoc --go_out=. riak.proto
+To generate the necessary protobuf interface types, do:
+git clone https://github.com/basho/riak_pb.git || pushd riak_pb ; git pull ; popd
+cat riak_pb/src/riak.proto riak_pb/src/riak_kv.proto | grep -v import >riak.proto
+protoc --go_out=. riak.proto
 
-	(or in case we also need search use "cat riak_pb/src/*.proto")
+(or in case we also need search use "cat riak_pb/src/*.proto")
 */
 
 // riak.Client the client interface
