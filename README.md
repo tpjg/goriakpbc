@@ -1,4 +1,4 @@
-goriakpbc
+riak (goriakpbc)
 =======
 
 Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb (github.com/mrb/riakpbc).
@@ -34,6 +34,40 @@ func main() {
 
 The library is still a work in progress, the API should resemble that of the Ruby riak-client.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
+
+### Riak Document Models
+
+The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/seancribbs/ripple).
+
+This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export and typically CamelCase versus underscores). Also it stores the model/struct name as _type in Riak just like ripple does.
+
+For example the following Ruby/Ripple class:
+```ruby
+    class Device
+      include Ripple::Document
+      property :ip, String
+      property :description, String
+      property :download_enabled, Boolean
+    end
+```
+can be mapped to the following Go class:
+```go
+    type Device struct {
+        Download_enabled bool    "download_enabled"
+        Ip               string  "ip"
+        Description      string  "description"
+        RiakModel        riak.Model
+    }
+```
+Note that it is required to have a "RiakModel" field that is a riak.Model Also if the field name in Ripple is equal the extra tag is not needed, (e.g. if the Ripple class above would have a "property :Ip, String").
+
+To get an instantiated struct from Riak would then require only a call to the riak.Client "Get" function:
+```go
+client := riak.New("127.0.0.1:8087")
+err := client.Connect()
+var dev Device 
+err = client.Get("devices", "abcdefghijklm", &dev)
+```
 
 ### Full documentation (including protobuf generated)
 
