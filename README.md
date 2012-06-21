@@ -50,7 +50,7 @@ For example the following Ruby/Ripple class:
       property :download_enabled, Boolean
     end
 ```
-can be mapped to the following Go class:
+can be mapped to the following Go struct:
 ```go
     type Device struct {
         DownloadEnabled  bool    "download_enabled"
