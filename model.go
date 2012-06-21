@@ -57,7 +57,7 @@ func setval(source reflect.Value, dest reflect.Value) {
 }
 
 // Check if the passed destination is a pointer to a struct with RiakModel field
-func (c *Client)check_dest(bucketname string, dest interface{}) (dv reflect.Value, dt reflect.Type, bucket *Bucket, err error){
+func (c *Client)check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, err error){
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
 		err = errors.New("Destination is not a pointer (to a struct)")
@@ -83,12 +83,6 @@ func (c *Client)check_dest(bucketname string, dest interface{}) (dv reflect.Valu
 		err = errors.New("Destination RiakModel field is not a Model")
 		return
 	}
-	// Fetch the object from Riak.
-	bucket = c.Bucket(bucketname)
-	if bucket == nil {
-		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
-		return
-	}
 	return	
 }
 
@@ -107,11 +101,16 @@ func (c *Client)check_dest(bucketname string, dest interface{}) (dv reflect.Valu
 */
 func (c *Client) Get(bucketname string, key string, dest interface{}) (err error) {
 	// Check destination
-	dv, dt, bucket, err := c.check_dest(bucketname, dest)
+	dv, dt, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
-	// Get object
+	// Fetch the object from Riak.
+	bucket := c.Bucket(bucketname)
+	if bucket == nil {
+		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
+		return
+	}
 	obj, err := bucket.Get(key)
 	if err != nil {
 		return err
@@ -160,31 +159,16 @@ empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the RiakModel field.
 */
 func (c *Client) New(bucketname string, key string, dest interface{}) (err error) {
-	// Check if the passed destination is a pointer to a struct with RiakModel field
-	dv := reflect.ValueOf(dest)
-	if dv.Kind() != reflect.Ptr || dv.IsNil() {
-		return errors.New("Destination is not a pointer (to a struct)")
-	}
-	dv = dv.Elem()
-	dt := reflect.TypeOf(dest)
-	dt = dt.Elem()
-	if dt.Kind() != reflect.Struct {
-		return errors.New("Destination is not a (pointer to a) struct")
-	}
-	dobj, exist := dt.FieldByName("RiakModel")
-	if !exist {
-		return errors.New("Destination has no RiakModel field")
-	}
-	if dobj.Type.Kind() != reflect.Struct {
-		return errors.New("Destination RiakModel field is not a Model struct")
-	}
-	if dobj.Type.Name() != "Model" {
-		return errors.New("Destination RiakModel field is not a Model")
+	// Check destination
+	dv, dt, err := c.check_dest(dest)
+	if err != nil {
+		return err
 	}
 	// Fetch the object from Riak.
 	bucket := c.Bucket(bucketname)
 	if bucket == nil {
-		return fmt.Errorf("Can't get bucket for %v", dt.Name())
+		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
+		return
 	}
 	// Check if the RObject field within RiakModel is still nill, otherwise
 	// this destination (dest) is probably an already fully instantiated 
@@ -209,5 +193,17 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 
 // Save a Document Model to Riak
 func (c *Client) Save(dest interface{}) (err error){
+	// Check destination
+	dv, _, err := c.check_dest(dest)
+	if err != nil {
+		return err
+	}
+	// Get the Model field
+	model := &Model{}
+	mv := reflect.ValueOf(model)
+	mv = mv.Elem()
+	vobj := dv.FieldByName("RiakModel")
+	mv.Set(vobj)
+	fmt.Println(model)
 	return
 }
