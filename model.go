@@ -39,7 +39,7 @@ if the Ripple class above would have a "property :Ip, String").
 type Model struct {
 	client  *Client
 	bucket  *Bucket
-	Key     string
+	key     string
 	robject *RObject
 }
 
@@ -57,7 +57,7 @@ func setval(source reflect.Value, dest reflect.Value) {
 }
 
 // Check if the passed destination is a pointer to a struct with RiakModel field
-func (c *Client)check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, err error){
+func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
 		err = errors.New("Destination is not a pointer (to a struct)")
@@ -83,7 +83,7 @@ func (c *Client)check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type,
 		err = errors.New("Destination RiakModel field is not a Model")
 		return
 	}
-	return	
+	return
 }
 
 /*	
@@ -144,7 +144,7 @@ func (c *Client) Get(bucketname string, key string, dest interface{}) (err error
 		}
 	}
 	// Set the values in the RiakModel field
-	model := &Model{client: c, bucket: bucket, Key: key, robject: obj}
+	model := &Model{client: c, bucket: bucket, key: key, robject: obj}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
@@ -185,17 +185,16 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	// and fields and set the RObject field to nil.
 	model.client = c
 	model.bucket = bucket
-	model.Key = key
+	model.key = key
 	vobj.Set(mv)
-	
+
 	return
 }
 
-
-// Save a Document Model to Riak
-func (c *Client) Save(dest interface{}) (err error){
+// Save a Document Model to Riak under a new key
+func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	// Check destination
-	dv, _, err := c.check_dest(dest)
+	dv, dt, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -205,6 +204,47 @@ func (c *Client) Save(dest interface{}) (err error){
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
 	mv.Set(vobj)
-	fmt.Println(model)
+	// Now create the (JSON) data field
+	if model.robject == nil {
+		model.robject = model.bucket.New(newKey)
+		model.robject.ContentType = "application/json"
+	}
+	// Start with the _type
+	data := []byte("{\"_type\":")
+	js, _ := json.Marshal(dt.Name())
+	data = append(data, js...)
+	// Now add the other fields, as long as they're "simple" fields
+	for i := 0; i < dt.NumField(); i++ {
+		ft := dt.Field(i)
+		fv := dv.Field(i)
+		var field string
+		if ft.Tag != "" {
+			field = string(ft.Tag)
+		} else {
+			field = ft.Name
+		}
+		switch ft.Type.Kind() {
+		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
+			js, _ = json.Marshal(field)
+			data = append(data, ',')
+			data = append(data, js...)
+			data = append(data, ':')
+			js, _ = json.Marshal(fv.Interface())
+			data = append(data, js...)
+		}
+	}
+	data = append(data, '}')
+	model.robject.Data = data
+	if newKey != "" {
+		model.robject.Key = newKey
+	}
+	// Store the RObject in Riak
+	err = model.robject.Store()
+
 	return
+}
+
+// Save a Document Model to Riak
+func (c *Client) Save(dest interface{}) (err error) {
+	return c.SaveAs("", dest)
 }
