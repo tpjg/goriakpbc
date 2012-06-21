@@ -39,7 +39,7 @@ To install run `go get github.com/tpjg/goriakpbc` and use import as in the examp
 
 The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/seancribbs/ripple).
 
-This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export and typically CamelCase versus underscores). Also it stores the model/struct name as _type in Riak just like ripple does.
+This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus underscores). Also it stores the model/struct name as _type in Riak just like ripple does.
 
 For example the following Ruby/Ripple class:
 ```ruby
@@ -59,7 +59,7 @@ can be mapped to the following Go class:
         RiakModel        riak.Model
     }
 ```
-Note that it is required to have a "RiakModel" field that is a riak.Model Also if the field name in Ripple is equal the extra tag is not needed, (e.g. if the Ripple class above would have a "property :Ip, String").
+Note that it is required to have a "RiakModel" field that is a riak.Model.
 
 To get an instantiated struct from Riak would then require only a call to the riak.Client "Get" function:
 ```go
