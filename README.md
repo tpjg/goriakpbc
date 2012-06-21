@@ -35,6 +35,25 @@ func main() {
 The library is still a work in progress, the API should resemble that of the Ruby riak-client.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
+Especially MapReduce and Document Models still need a lot of work, however some functions that are already implemented are described below.
+
+### Map Reduce
+
+There is a function to run a MapReduce directly:
+```go
+func (c *Client) RunMapReduce(query string) (resp [][]byte, err error)
+```
+
+And MapReduce queries can be build similar to how the MapReduce class from the Ruby riak-client works:
+```go
+mr := client.MapReduce()
+mr.Add("bucket", "key")
+mr.LinkBucket("otherbucket", false)
+mr.Map("function(v) {return [JSON.parse(v.values[0].data)];}", true)
+res, err := mr.Run()
+```
+
+
 ### Riak Document Models
 
 The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/seancribbs/ripple).
