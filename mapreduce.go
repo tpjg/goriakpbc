@@ -13,15 +13,6 @@ type MapReduce struct {
 	request string
 }
 
-type LinkPhase struct {
-	bucket string
-	tag    string
-	keep   bool
-}
-type MRPhase struct {
-	link LinkPhase
-}
-
 /*
 require 'riak'
 c = Riak::Client.new
