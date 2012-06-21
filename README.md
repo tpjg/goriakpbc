@@ -80,12 +80,14 @@ can be mapped to the following Go struct:
 ```
 Note that it is required to have a "RiakModel" field that is a riak.Model.
 
-To get an instantiated struct from Riak would then require only a call to the riak.Client "Get" function:
+To get an instantiated struct from Riak would then require only a call to the riak.Client "Load" function, and to store it call "Save" or "SaveAs":
 ```go
 client := riak.New("127.0.0.1:8087")
 err := client.Connect()
 var dev Device 
-err = client.Get("devices", "abcdefghijklm", &dev)
+err = client.Load("devices", "abcdefghijklm", &dev)
+dev.Description = "something else"
+err = client.SaveAs("newkey", &dev)
 ```
 
 ### Full documentation (including protobuf generated)

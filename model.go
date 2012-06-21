@@ -87,7 +87,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 }
 
 /*	
-	The Get function retrieves the data from Riak and stores it in the struct
+	The Load function retrieves the data from Riak and stores it in the struct
 	that is passed as destination. It stores some necessary information in the
 	RiakModel field so it can be used later in other (Save) operations.
 
@@ -97,9 +97,9 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 	Using the "Device" struct as an example:
 
 	dev := &Device{}
-	err := client.Get("devices", "12345", dev)
+	err := client.Load("devices", "12345", dev)
 */
-func (c *Client) Get(bucketname string, key string, dest interface{}) (err error) {
+func (c *Client) Load(bucketname string, key string, dest interface{}) (err error) {
 	// Check destination
 	dv, dt, err := c.check_dest(dest)
 	if err != nil {
