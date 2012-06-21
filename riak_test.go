@@ -349,7 +349,6 @@ func TestRunMapReduce(t *testing.T) {
 	obj1.LinkTo(obj2, "test")
 	obj1.Store()
 
-	//{"inputs":[["client_test.go","mrobj1"]],"query":[{"map":{"language":"javascript","keep":true,"source":"function(v) { return [v]; }"}}]}	
 	//q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [JSON.parse(v.values[0].data)]; }\"}}]}"
 	q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [v]; }\"}}]}"
 

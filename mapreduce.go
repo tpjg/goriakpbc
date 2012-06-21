@@ -13,18 +13,6 @@ type MapReduce struct {
 	request string
 }
 
-/*
-require 'riak'
-c = Riak::Client.new
-r = Riak::MapReduce.new(c)
-r.add('t', 'a')
-r.link(:bucket => 'h')
-r.map('function(v) { return [v]; }', :keep => true)
-r.to_json
-
-# "{\"inputs\":[[\"t\",\"a\"]],\"query\":[{\"link\":{\"bucket\":\"h\",\"tag\":\"_\",\"keep\":false}},{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [v]; }\"}}]}"
-*/
-
 func (c *Client) MapReduce() *MapReduce {
 	return &MapReduce{client: c, inputs: make([][]string, 0), phases: make([]string, 0), request: ""}
 }
