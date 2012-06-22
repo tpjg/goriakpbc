@@ -243,5 +243,47 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 
 // Save a Document Model to Riak
 func (c *Client) Save(dest interface{}) (err error) {
-	return c.SaveAs("", dest)
+	return c.SaveAs("±___unchanged___±", dest)
+}
+
+// Get a models Key, e.g. needed when Riak has picked it
+func (c *Client) Key(dest interface{}) (key string, err error) {
+	// Check destination
+	dv, _, err := c.check_dest(dest)
+	if err != nil {
+		return
+	}
+	// Get the Model field
+	model := &Model{}
+	mv := reflect.ValueOf(model)
+	mv = mv.Elem()
+	vobj := dv.FieldByName("RiakModel")
+	mv.Set(vobj)
+	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
+	if model.robject == nil {
+		err = errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return
+	}
+	return model.robject.Key, nil
+}
+
+// Set the Key value, note that this does not save the model, it only changes the data structure
+func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
+	// Check destination
+	dv, _, err := c.check_dest(dest)
+	if err != nil {
+		return
+	}
+	// Get the Model field
+	model := &Model{}
+	mv := reflect.ValueOf(model)
+	mv = mv.Elem()
+	vobj := dv.FieldByName("RiakModel")
+	mv.Set(vobj)
+	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
+	if model.robject == nil {
+		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+	}
+	model.robject.Key = newKey
+	return
 }

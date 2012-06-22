@@ -417,6 +417,18 @@ func TestModel(t *testing.T) {
 	assert.T(t, doc2.FieldF == doc.FieldF)
 	assert.T(t, doc2.FieldB == doc.FieldB)
 
+	// Get the key
+	key, err := client.Key(&doc2)
+	assert.T(t, err == nil)
+	assert.T(t, key == "TestModel")
+	// Set it differently
+	err = client.SetKey("newTestModel", &doc2)
+	assert.T(t, err == nil)
+	// And test that it changed by getting it again
+	key, err = client.Key(&doc2)
+	assert.T(t, err == nil)	
+	assert.T(t, key == "newTestModel")
+	
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModel")
