@@ -37,9 +37,9 @@ Also if the field name in Ripple is equal the extra tag is not needed, (e.g.
 if the Ripple class above would have a "property :Ip, String").
 */
 type Model struct {
-	client  *Client
-	bucket  *Bucket
-	key     string
+	//client  *Client
+	//bucket  *Bucket
+	//key     string
 	robject *RObject
 }
 
@@ -144,7 +144,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 		}
 	}
 	// Set the values in the RiakModel field
-	model := &Model{client: c, bucket: bucket, key: key, robject: obj}
+	model := &Model{robject: obj}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
@@ -183,15 +183,13 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	}
 	// For the RiakModel field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
-	model.client = c
-	model.bucket = bucket
-	model.key = key
+	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json"}
 	vobj.Set(mv)
 
 	return
 }
 
-// Save a Document Model to Riak under a new key
+// Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	// Check destination
 	dv, dt, err := c.check_dest(dest)
@@ -204,10 +202,9 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
 	mv.Set(vobj)
-	// Now create the (JSON) data field
+	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		model.robject = model.bucket.New(newKey)
-		model.robject.ContentType = "application/json"
+		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
 	}
 	// Start with the _type
 	data := []byte("{\"_type\":")
@@ -235,7 +232,7 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	}
 	data = append(data, '}')
 	model.robject.Data = data
-	if newKey != "" {
+	if newKey != "±___unchanged___±" {
 		model.robject.Key = newKey
 	}
 	// Store the RObject in Riak

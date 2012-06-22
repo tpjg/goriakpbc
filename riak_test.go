@@ -389,3 +389,36 @@ func TestMapReduce(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
 }
+
+type DocumentModel struct {
+	FieldS    string
+	FieldF    float64
+	FieldB    bool
+	RiakModel Model
+}
+
+func TestModel(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a new "DocumentModel" and save it
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err := client.New("testmodel.go", "TestModel", &doc)
+	assert.T(t, err == nil)
+	err = client.Save(&doc)
+	assert.T(t, err == nil)
+	
+	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
+	doc2 := DocumentModel{}
+	err = client.Load("testmodel.go", "TestModel", &doc2)
+	assert.T(t, err == nil)
+	assert.T(t, doc2.FieldS == doc.FieldS)
+	assert.T(t, doc2.FieldF == doc.FieldF)
+	assert.T(t, doc2.FieldB == doc.FieldB)
+
+	// Cleanup
+	bucket := client.Bucket("testmodel.go")
+	err = bucket.Delete("TestModel")
+	assert.T(t, err == nil)
+}
