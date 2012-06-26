@@ -267,6 +267,14 @@ func (c *Client) Key(dest interface{}) (key string, err error) {
 	return model.robject.Key, nil
 }
 
+// Get a models Key, e.g. needed when Riak has picked it
+func (m Model) Key() (key string) {
+	if m.robject == nil {
+		return ""
+	}
+	return m.robject.Key
+}
+
 // Set the Key value, note that this does not save the model, it only changes the data structure
 func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	// Check destination
@@ -285,5 +293,14 @@ func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
 	}
 	model.robject.Key = newKey
+	return
+}
+
+// Set the Key value, note that this does not save the model, it only changes the data structure
+func (m Model) SetKey(newKey string) (err error) {
+	if m.robject == nil {
+		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+	}
+	m.robject.Key = newKey
 	return
 }
