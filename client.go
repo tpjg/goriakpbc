@@ -171,9 +171,12 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 			return nil, err
 		}
 		done := partial.Done
-		resp := make([][]byte, 1)
-		resp[0] = partial.Response
-
+		var resp [][]byte = nil
+		if partial.Response != nil {
+			resp = make([][]byte, 1)
+			resp[0] = partial.Response
+		}
+		
 		for done == nil {
 			partial = &RpbMapRedResp{}
 			// Read another response
