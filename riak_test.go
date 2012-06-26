@@ -406,7 +406,8 @@ func TestModel(t *testing.T) {
 	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
 	err := client.New("testmodel.go", "TestModel", &doc)
 	assert.T(t, err == nil)
-	err = client.Save(&doc)
+	//err = client.Save(&doc)
+	err = doc.RiakModel.Save()
 	assert.T(t, err == nil)
 	
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly

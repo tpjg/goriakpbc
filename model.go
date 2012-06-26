@@ -41,6 +41,7 @@ type Model struct {
 	//bucket  *Bucket
 	//key     string
 	robject *RObject
+	parent interface{} // Pointer to the parent struct (Device in example above)
 }
 
 func setval(source reflect.Value, dest reflect.Value) {
@@ -144,7 +145,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 		}
 	}
 	// Set the values in the RiakModel field
-	model := &Model{robject: obj}
+	model := &Model{robject: obj, parent: dest}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
 	vobj := dv.FieldByName("RiakModel")
@@ -184,6 +185,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	// For the RiakModel field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
 	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json"}
+	model.parent = dest
 	vobj.Set(mv)
 
 	return
@@ -244,6 +246,25 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 // Save a Document Model to Riak
 func (c *Client) Save(dest interface{}) (err error) {
 	return c.SaveAs("±___unchanged___±", dest)
+}
+
+// Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
+func (m *Model) SaveAs(newKey string) (err error) {
+	if m.robject == nil {
+		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+	}
+	if m.robject.Bucket == nil {
+		return errors.New("Destination struct has no bucket set, not instantiated correctly")
+	}
+	if m.robject.Bucket.client == nil {
+		return errors.New("Destination struct has no client set, not instantiated correctly")
+	}
+	return m.robject.Bucket.client.SaveAs(newKey, m.parent)
+}
+
+// Save a Document Model to Riak
+func (m *Model) Save() (err error) {
+	return m.SaveAs("±___unchanged___±")
 }
 
 // Get a models Key, e.g. needed when Riak has picked it

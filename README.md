@@ -87,7 +87,7 @@ err := client.Connect()
 var dev Device 
 err = client.Load("devices", "abcdefghijklm", &dev)
 dev.Description = "something else"
-err = client.SaveAs("newkey", &dev)
+err = client.SaveAs("newkey", &dev) // or: err=dev.RiakModel.SaveAs("newKey")
 ```
 
 ### Full documentation (including protobuf generated)
