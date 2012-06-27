@@ -52,13 +52,13 @@ mr.LinkBucket("otherbucket", false)
 mr.Map("function(v) {return [JSON.parse(v.values[0].data)];}", true)
 res, err := mr.Run()
 ```
-
+Map functions using Erlang instead of Javascript must be added using "MapErlang" instead of "Map" and there is a predefined function "MapObjectValue" that uses the riak_kv_mapreduce module's map_object_value function.
 
 ### Riak Document Models
 
 The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/seancribbs/ripple).
 
-This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus underscores). Also it stores the model/struct name as _type in Riak just like ripple does.
+This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus snake_case). Also it stores the model/struct name as _type in Riak just like ripple does.
 
 For example the following Ruby/Ripple class:
 ```ruby

@@ -367,14 +367,14 @@ func TestMapReduce(t *testing.T) {
 	obj1 := bucket.New("mrobj1")
 	assert.T(t, obj1 != nil)
 	obj1.ContentType = "application/json"
-	obj1.Data = []byte("{\"k\":\"v\"}")
+	obj1.Data = []byte(`{"k":"v"}`)
 	err := obj1.Store()
 	assert.T(t, err == nil)
 	// Create object 2
 	obj2 := bucket.New("mrobj2")
 	assert.T(t, obj2 != nil)
 	obj2.ContentType = "application/json"
-	obj2.Data = []byte("{\"k\":\"v2\"}")
+	obj2.Data = []byte(`{"k":"v2"}`)
 	err = obj2.Store()
 	assert.T(t, err == nil)
 	// Link them
@@ -386,6 +386,13 @@ func TestMapReduce(t *testing.T) {
 	//mr.LinkBucket("bucketname", false)
 	mr.Map("function(v) {return [v];}", true)
 	res, err := mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+
+	mr = client.MapReduce()
+	mr.Add("client_test.go", "mrobj1")
+	mr.MapObjectValue(true)
+	res, err = mr.Run()
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
 }
@@ -409,7 +416,7 @@ func TestModel(t *testing.T) {
 	//err = client.Save(&doc)
 	err = doc.RiakModel.Save()
 	assert.T(t, err == nil)
-	
+
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
 	doc2 := DocumentModel{}
 	err = client.Load("testmodel.go", "TestModel", &doc2)
@@ -427,9 +434,9 @@ func TestModel(t *testing.T) {
 	assert.T(t, err == nil)
 	// And test that it changed by getting it again
 	key, err = client.Key(&doc2)
-	assert.T(t, err == nil)	
+	assert.T(t, err == nil)
 	assert.T(t, key == "newTestModel")
-	
+
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModel")

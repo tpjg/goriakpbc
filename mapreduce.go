@@ -42,6 +42,22 @@ func (mr *MapReduce) Map(fun string, keep bool) {
 	mr.phases = append(mr.phases, m)
 }
 
+func (mr *MapReduce) MapErlang(module string, fun string, keep bool) {
+	m := `{"map":{"language":"erlang","module":"` + module + `","function":"` + fun + `","keep":`
+	if keep {
+		m = m + `true`
+	} else {
+		m = m + `false`
+	}
+	m = m + `}}`
+	mr.phases = append(mr.phases, m)
+}
+
+func (mr *MapReduce) MapObjectValue(keep bool) {
+	//{"map":{"language":"erlang","module":"riak_kv_mapreduce","function":"map_object_value"}}
+	mr.MapErlang("riak_kv_mapreduce", "map_object_value", keep)
+}
+
 // Generate the Query string
 func (mr *MapReduce) Query() (query []byte, err error) {
 	inputs, err := json.Marshal(mr.inputs)
