@@ -41,7 +41,21 @@ type Model struct {
 	//bucket  *Bucket
 	//key     string
 	robject *RObject
-	parent interface{} // Pointer to the parent struct (Device in example above)
+	parent  interface{} // Pointer to the parent struct (Device in example above)
+}
+
+// Link to one other model
+type One struct {
+	parent interface{}
+	bucket *Bucket
+	link   Link
+}
+
+// Link to many other models
+type Many struct {
+	parent interface{}
+	bucket *Bucket
+	links  []Link
 }
 
 func setval(source reflect.Value, dest reflect.Value) {
@@ -54,6 +68,16 @@ func setval(source reflect.Value, dest reflect.Value) {
 		dest.SetFloat(source.Float())
 	case reflect.Int:
 		dest.SetInt(source.Int())
+	}
+}
+
+func setOneLink(source Link, dest reflect.Value) {
+	if dest.Kind() == reflect.Struct {
+		fmt.Printf("dest = %v\n", dest)
+		one := One{link: source};
+		mv := reflect.ValueOf(one)
+		dest.Set(mv)
+		return
 	}
 }
 
@@ -134,6 +158,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
+		fmt.Printf("field: %v - %v %v %v %v\n", i, ft, fv, ft.Name, ft.Tag)
 		if data[ft.Name] != nil {
 			if ft.Type == reflect.TypeOf(data[ft.Name]) {
 				setval(reflect.ValueOf(data[ft.Name]), fv)
@@ -142,7 +167,27 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 			if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
 				setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
 			}
+		} else if ft.Type.Name() == "One" {
+			// Search in Links
+			for _, v := range obj.Links {
+				if v.Bucket == string(ft.Tag) {
+					setOneLink(v, fv)
+					fmt.Printf("Riak One Link : %v\n", v)
+				}
+			}
+		} else if ft.Type.Name() == "Many" {
+			// Search in Links
+			for _, v := range obj.Links {
+				if v.Bucket == string(ft.Tag) {
+					//addManyLink()
+					fmt.Printf("Riak Many Link : %v\n", v)
+				}
+			}
 		}
+	}
+	// Now go over the Links and see if any of those match a riak.One or riak.Many
+	for _, v := range obj.Links {
+		fmt.Printf("links: %v\n", v)
 	}
 	// Set the values in the RiakModel field
 	model := &Model{robject: obj, parent: dest}
@@ -324,4 +369,8 @@ func (m Model) SetKey(newKey string) (err error) {
 	}
 	m.robject.Key = newKey
 	return
+}
+
+func (o One) Link() (link Link) {
+	return o.link
 }
