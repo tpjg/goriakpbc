@@ -87,7 +87,7 @@ func (c *Client) read(size int) (response []byte, err error) {
 }
 
 // Request serializes the data (using protobuf), adds the header and sends it to Riak.
-func (c *Client) request(req interface{}, name string) (err error) {
+func (c *Client) request(req proto.Message, name string) (err error) {
 	// Serialize the request using protobuf
 	pbmsg, err := proto.Marshal(req)
 	if err != nil {
@@ -104,7 +104,7 @@ func (c *Client) request(req interface{}, name string) (err error) {
 }
 
 // Reponse deserializes the data and returns a struct.
-func (c *Client) response(response interface{}) (err error) {
+func (c *Client) response(response proto.Message) (err error) {
 
 	// Read the response from Riak
 	msgbuf, err := c.read(5)
