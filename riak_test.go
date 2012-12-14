@@ -277,7 +277,7 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, obj.Indexes["test_int"] == strconv.Itoa(123))
 	assert.T(t, obj.Indexes["and_bin"] == "blurb")
 
-	/* Not yet implemented on my Riak install
+	// Not yet implemented on my Riak install
 
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
@@ -285,7 +285,7 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "indexes")
-	*/
+	//
 
 	// Cleanup
 	err = obj.Destroy()
