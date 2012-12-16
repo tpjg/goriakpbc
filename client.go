@@ -220,6 +220,66 @@ func (c *Client) mr_response() (response [][]byte, err error) {
     return
 }
 
+// Deserializes the data from possibly multiple packets, 
+// currently only supports RpbListKeysResp
+func (c *Client) mp_response() (response [][]byte, err error) {
+
+    var (
+        partial *RpbListKeysResp
+        msgcode byte
+    )
+
+    defer c.mu.Unlock() // Unlock the Mutex after reading the complete response
+
+    for {
+        // Read the response from Riak
+        msgbuf, err := c.read(5)
+        if err != nil {
+            return nil, err
+        }
+        // Check the length
+        if len(msgbuf) < 5 {
+            return nil, errors.New("Response length too short")
+        }
+        // Read the message length, read the rest of the message if necessary
+        msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
+        pbmsg, err := c.read(msglen - 1)
+        if err != nil {
+            return nil, err
+        }
+
+        // Deserialize, by default the calling method should provide the expected RbpXXXResp
+        msgcode = msgbuf[4]
+
+        if msgcode == messageCodes["RpbListKeysResp"] {
+            partial = &RpbListKeysResp{}
+            err = proto.Unmarshal(pbmsg, partial)
+            if err != nil {
+                return nil, err
+            }
+
+            response = append(response, partial.Keys...)
+
+            if partial.Done != nil {
+                break
+            }
+        } else if msgcode == messageCodes["RpbErrorResp"] {
+            errResp := &RpbErrorResp{}
+            err = proto.Unmarshal(pbmsg, errResp)
+            if err == nil {
+                err = errors.New(string(errResp.Errmsg))
+            } else {
+                err = errors.New(string("Cannot deserialize error response from Riak"))
+            }
+            return nil, err
+        } else {
+            return nil, err
+        }
+    }
+
+    return
+}
+
 // Ping the server
 func (c *Client) Ping() (err error) {
     // Use hardcoded request, no need to serialize
