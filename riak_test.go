@@ -465,6 +465,7 @@ func TestModel(t *testing.T) {
 type DocumentModelWithLinks struct {
 	FieldS    string
 	ALink     One "tag_as_parent"
+	BLink     One // Will automatically use own name as a tag when linking
 	RiakModel Model
 }
 
@@ -480,15 +481,15 @@ func TestModelWithLinks(t *testing.T) {
 	//err = client.Save(&doc)
 	err = parent.RiakModel.Save()
 	assert.T(t, err == nil)
-	
+
 	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
-	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}}
+	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}, BLink: One{model: &parent}}
 	err = client.New("testmodellinks.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
 	err = doc.RiakModel.Save()
 	assert.T(t, err == nil)
-	
+
 	// Load it from Riak and check that the fields of the struct are set correctly, including the link to the parent
 	doc2 := DocumentModelWithLinks{}
 	err = client.Load("testmodellinks.go", "TestModelKey", &doc2)
@@ -496,8 +497,10 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, doc2.FieldS == doc.FieldS)
 	assert.T(t, doc2.ALink.model == nil) // Related documents are not loaded automatically, only the link is populated
 	assert.T(t, doc2.ALink.link.Tag == "tag_as_parent")
-	fmt.Printf("One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
-	
+	assert.T(t, doc2.BLink.link.Tag == "BLink")
+	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
+	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
+
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModelKey")
@@ -505,5 +508,5 @@ func TestModelWithLinks(t *testing.T) {
 	bucket = client.Bucket("testmodellinks.go")
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
-	
+
 }

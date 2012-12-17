@@ -71,7 +71,6 @@ func setval(source reflect.Value, dest reflect.Value) {
 
 func setOneLink(source Link, dest reflect.Value) {
 	if dest.Kind() == reflect.Struct {
-		fmt.Printf("dest = %v\n", dest)
 		one := One{link: source}
 		mv := reflect.ValueOf(one)
 		dest.Set(mv)
@@ -156,7 +155,6 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
-		fmt.Printf("field: %v - %v %v %v %v\n", i, ft, fv, ft.Name, ft.Tag)
 		if data[ft.Name] != nil {
 			if ft.Type == reflect.TypeOf(data[ft.Name]) {
 				setval(reflect.ValueOf(data[ft.Name]), fv)
@@ -166,11 +164,16 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 				setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
 			}
 		} else if ft.Type.Name() == "One" {
+			var tag string
+			if ft.Tag != "" {
+				tag = string(ft.Tag)
+			} else {
+				tag = ft.Name
+			}
 			// Search in Links
 			for _, v := range obj.Links {
-				if v.Tag == string(ft.Tag) {
+				if v.Tag == tag {
 					setOneLink(v, fv)
-					fmt.Printf("Riak One Link : %v\n", v)
 				}
 			}
 		} else if ft.Type.Name() == "Many" {
@@ -182,10 +185,6 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 				}
 			}
 		}
-	}
-	// Now go over the Links and see if any of those match a riak.One or riak.Many
-	for _, v := range obj.Links {
-		fmt.Printf("links: %v\n", v)
 	}
 	// Set the values in the RiakModel field
 	model := &Model{robject: obj, parent: dest}
@@ -235,11 +234,10 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 }
 
 // Creates a link to a given model
-func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err error){
+func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err error) {
 	// Check destination
 	dv, _, err := c.check_dest(dest)
 	if err != nil {
-		fmt.Printf("Error linking to model - %v (%v)\n", err, dest)
 		return err
 	}
 	// Get the Model field
@@ -250,12 +248,9 @@ func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err er
 	mv.Set(vobj)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		fmt.Printf("Error linking to model - not instantiated\n")
-		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return errors.New("Error in LinkToModel - destination struct is not instantiated using riak.New or riak.Load")
 	}
-	fmt.Printf("Linking %v to %v with tag %v\n", obj, model.robject, tag)
 	obj.LinkTo(model.robject, tag)
-	
 	return nil
 }
 
@@ -291,14 +286,17 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 			field = ft.Name
 		}
 		if ft.Type.Name() == "One" {
-			// Save a link
-			fmt.Printf(" Saving One link - %v - %v\n", ft, fv)
+			// Save a link, set the One struct first
 			lmodel := &One{}
 			lmv := reflect.ValueOf(lmodel)
 			lmv = lmv.Elem()
 			lmv.Set(fv)
-			fmt.Printf(" One - %v - %v - %v\n", lmodel.model, lmodel.link, lmodel)
-			c.LinkToModel(model.robject, lmodel.model, string(ft.Tag))			
+			// Now use that to link with the given tag or the name
+			if ft.Tag != "" {
+				c.LinkToModel(model.robject, lmodel.model, string(ft.Tag))
+			} else {
+				c.LinkToModel(model.robject, lmodel.model, ft.Name)
+			}
 		}
 		switch ft.Type.Kind() {
 		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
