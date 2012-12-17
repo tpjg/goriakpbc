@@ -269,6 +269,15 @@ func TestObjectIndexes(t *testing.T) {
 	obj.Indexes["and_bin"] = "blurb"
 	err := obj.Store()
 	assert.T(t, err == nil)
+	// Create a second object
+	obj2 := bucket.New("indexes2")
+	assert.T(t, obj2 != nil)
+	obj2.ContentType = "text/plain"
+	obj2.Data = []byte("indexes to keep")
+	obj2.Indexes["test_int"] = strconv.Itoa(124)
+	obj2.Indexes["and_bin"] = "blurb"
+	err = obj2.Store()
+	assert.T(t, err == nil)
 
 	// Fetch the object and check
 	obj, err = bucket.Get("indexes")
@@ -277,18 +286,28 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, obj.Indexes["test_int"] == strconv.Itoa(123))
 	assert.T(t, obj.Indexes["and_bin"] == "blurb")
 
-	/* Not yet implemented on my Riak install
-
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
-	fmt.Printf("Something happened : %v\n", err)
+	if err == nil {
+		fmt.Printf("2i query returned : %v\n", keys)
+	}
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "indexes")
-	*/
+	// Get a list of keys using the index range query
+	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
+	if err == nil {
+		fmt.Printf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 2)
+	assert.T(t, keys[0] == "indexes" || keys[1] == "indexes")
+	assert.T(t, keys[0] == "indexes2" || keys[1] == "indexes2")
 
 	// Cleanup
 	err = obj.Destroy()
+	assert.T(t, err == nil)
+	err = obj2.Destroy()
 	assert.T(t, err == nil)
 }
 
