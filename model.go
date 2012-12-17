@@ -46,15 +46,13 @@ type Model struct {
 
 // Link to one other model
 type One struct {
-	parent interface{}
-	bucket *Bucket
-	link   Link
+	model interface{}
+	link  Link
 }
 
 // Link to many other models
 type Many struct {
-	parent interface{}
-	bucket *Bucket
+	models []interface{}
 	links  []Link
 }
 
@@ -74,7 +72,7 @@ func setval(source reflect.Value, dest reflect.Value) {
 func setOneLink(source Link, dest reflect.Value) {
 	if dest.Kind() == reflect.Struct {
 		fmt.Printf("dest = %v\n", dest)
-		one := One{link: source};
+		one := One{link: source}
 		mv := reflect.ValueOf(one)
 		dest.Set(mv)
 		return
@@ -170,7 +168,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 		} else if ft.Type.Name() == "One" {
 			// Search in Links
 			for _, v := range obj.Links {
-				if v.Bucket == string(ft.Tag) {
+				if v.Tag == string(ft.Tag) {
 					setOneLink(v, fv)
 					fmt.Printf("Riak One Link : %v\n", v)
 				}
@@ -178,7 +176,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 		} else if ft.Type.Name() == "Many" {
 			// Search in Links
 			for _, v := range obj.Links {
-				if v.Bucket == string(ft.Tag) {
+				if v.Tag == string(ft.Tag) {
 					//addManyLink()
 					fmt.Printf("Riak Many Link : %v\n", v)
 				}
@@ -236,6 +234,31 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	return
 }
 
+// Creates a link to a given model
+func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err error){
+	// Check destination
+	dv, _, err := c.check_dest(dest)
+	if err != nil {
+		fmt.Printf("Error linking to model - %v (%v)\n", err, dest)
+		return err
+	}
+	// Get the Model field
+	model := &Model{}
+	mv := reflect.ValueOf(model)
+	mv = mv.Elem()
+	vobj := dv.FieldByName("RiakModel")
+	mv.Set(vobj)
+	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
+	if model.robject == nil {
+		fmt.Printf("Error linking to model - not instantiated\n")
+		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+	}
+	fmt.Printf("Linking %v to %v with tag %v\n", obj, model.robject, tag)
+	obj.LinkTo(model.robject, tag)
+	
+	return nil
+}
+
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	// Check destination
@@ -266,6 +289,16 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 			field = string(ft.Tag)
 		} else {
 			field = ft.Name
+		}
+		if ft.Type.Name() == "One" {
+			// Save a link
+			fmt.Printf(" Saving One link - %v - %v\n", ft, fv)
+			lmodel := &One{}
+			lmv := reflect.ValueOf(lmodel)
+			lmv = lmv.Elem()
+			lmv.Set(fv)
+			fmt.Printf(" One - %v - %v - %v\n", lmodel.model, lmodel.link, lmodel)
+			c.LinkToModel(model.robject, lmodel.model, string(ft.Tag))			
 		}
 		switch ft.Type.Kind() {
 		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
