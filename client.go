@@ -49,6 +49,7 @@ func (c *Client) Connect() (err error) {
     if err != nil {
         return err
     }
+    c.connected = true
     return nil
 }
 
