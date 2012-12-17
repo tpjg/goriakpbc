@@ -37,6 +37,24 @@ To install run `go get github.com/tpjg/goriakpbc` and use import as in the examp
 
 Especially MapReduce and Document Models still need a lot of work, however some functions that are already implemented are described below.
 
+### Secondary indexes (2i)
+
+Secondary indexes are supported and can be queried for equality using IndexQuery and for a range using IndexQueryRange. Indexes must be added as strings, even when adding a "_int" index. See the example below, taken from riak_test.go:
+
+```go
+
+obj := bucket.New("indexes")
+obj.ContentType = "text/plain"
+obj.Data = []byte("indexes to keep")
+obj.Indexes["test_int"] = strconv.Itoa(123)
+err := obj.Store()
+...
+keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
+...
+keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
+
+```
+
 ### Map Reduce
 
 There is a function to run a MapReduce directly:
