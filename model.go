@@ -37,23 +37,22 @@ Also if the field name in Ripple is equal the extra tag is not needed, (e.g.
 if the Ripple class above would have a "property :Ip, String").
 */
 type Model struct {
-	//client  *Client
-	//bucket  *Bucket
-	//key     string
 	robject *RObject
 	parent  interface{} // Pointer to the parent struct (Device in example above)
 }
 
 // Link to one other model
 type One struct {
-	model interface{}
-	link  Link
+	model  interface{}
+	link   Link
+	client *Client
 }
 
 // Link to many other models
 type Many struct {
 	models []interface{}
 	links  []Link
+	client *Client
 }
 
 func setval(source reflect.Value, dest reflect.Value) {
@@ -69,9 +68,9 @@ func setval(source reflect.Value, dest reflect.Value) {
 	}
 }
 
-func setOneLink(source Link, dest reflect.Value) {
+func (c *Client) setOneLink(source Link, dest reflect.Value) {
 	if dest.Kind() == reflect.Struct {
-		one := One{link: source}
+		one := One{link: source, client: c}
 		mv := reflect.ValueOf(one)
 		dest.Set(mv)
 		return
@@ -173,7 +172,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 			// Search in Links
 			for _, v := range obj.Links {
 				if v.Tag == tag {
-					setOneLink(v, fv)
+					c.setOneLink(v, fv)
 				}
 			}
 		} else if ft.Type.Name() == "Many" {
@@ -234,7 +233,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 }
 
 // Creates a link to a given model
-func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err error) {
+func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err error) {
 	// Check destination
 	dv, _, err := c.check_dest(dest)
 	if err != nil {
@@ -248,7 +247,7 @@ func (c *Client) LinkToModel(obj *RObject, dest interface{}, tag string) (err er
 	mv.Set(vobj)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		return errors.New("Error in LinkToModel - destination struct is not instantiated using riak.New or riak.Load")
+		return errors.New("Error in linkToModel - destination struct is not instantiated using riak.New or riak.Load")
 	}
 	obj.LinkTo(model.robject, tag)
 	return nil
@@ -293,9 +292,9 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 			lmv.Set(fv)
 			// Now use that to link with the given tag or the name
 			if ft.Tag != "" {
-				c.LinkToModel(model.robject, lmodel.model, string(ft.Tag))
+				c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
 			} else {
-				c.LinkToModel(model.robject, lmodel.model, ft.Name)
+				c.linkToModel(model.robject, lmodel.model, ft.Name)
 			}
 		}
 		switch ft.Type.Kind() {
@@ -404,4 +403,15 @@ func (m Model) SetKey(newKey string) (err error) {
 
 func (o One) Link() (link Link) {
 	return o.link
+}
+
+func (o *One) Set(dest interface{}) {
+	o.model = dest
+}
+
+func (o *One) Get(dest interface{}) (err error) {
+	if o.client == nil {
+		return errors.New("riake.One link to other model not properly initialized")
+	}
+	return o.client.Load(o.link.Bucket, o.link.Key, dest)
 }

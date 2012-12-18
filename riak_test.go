@@ -483,7 +483,8 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, err == nil)
 
 	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
-	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}, BLink: One{model: &parent}}
+	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}}
+	doc.BLink.Set(&parent) // testing One.Set while we're at it
 	err = client.New("testmodellinks.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
@@ -500,7 +501,13 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, doc2.BLink.link.Tag == "BLink")
 	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
 	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
-
+	
+	// Load the parent from the link
+	parent2 := DocumentModel{}
+	err = doc2.ALink.Get(&parent2)
+	assert.T(t, err == nil)
+	assert.T(t, parent == parent2)
+	
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModelKey")
