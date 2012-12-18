@@ -49,6 +49,7 @@ func (c *Client) Connect() (err error) {
 	if err != nil {
 		return err
 	}
+	c.connected = true
 	return nil
 }
 
@@ -176,7 +177,7 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 			resp = make([][]byte, 1)
 			resp[0] = partial.Response
 		}
-		
+
 		for done == nil {
 			partial = &RpbMapRedResp{}
 			// Read another response
