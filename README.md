@@ -32,10 +32,12 @@ func main() {
 }
 ```
 
-The library is still a work in progress, the API should resemble that of the Ruby riak-client.
+The library is still a work in progress. Parts of the library are specifically designed to facilitate project that both use Ruby and go. See the "Document Models" below.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
-Especially MapReduce and Document Models still need a lot of work, however some functions that are already implemented are described below.
+The Document Models still need a lot of work like supporting many links and indexes, however some functions that are already implemented are described below.
+
+An experimental "pool" branch supports opening multiple connections to Riak so goroutines can access Riak concurrently. See the "riak_test.go" in the pool branch for an example.
 
 ### Secondary indexes (2i)
 
