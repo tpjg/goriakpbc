@@ -29,14 +29,21 @@ type Client struct {
 	addr         string
 	readTimeout  time.Duration
 	writeTimeout time.Duration
+	conn_count   int
+	conns        chan *net.TCPConn
 }
 
 // Returns a new Client connection
 func New(addr string) *Client {
-	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8}
+	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
 }
 
-// Connects to a single riak server.
+// Returns a new Client with multiple connections to Riak
+func NewPool(addr string, count int) *Client {
+	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
+}
+
+// Connects to a Riak server.
 func (c *Client) Connect() (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -45,9 +52,24 @@ func (c *Client) Connect() (err error) {
 	if err != nil {
 		return err
 	}
-	c.conn, err = net.DialTCP("tcp", nil, tcpaddr)
-	if err != nil {
-		return err
+
+	if c.conn_count <= 0 {
+		return errors.New("Connection count <= 0")
+	} else if c.conn_count == 1 {
+		c.conn, err = net.DialTCP("tcp", nil, tcpaddr)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Create multiple connections to Riak and send these to the conns channel for later use
+		c.conns = make(chan *net.TCPConn, c.conn_count)
+		for i := 0; i < c.conn_count; i++ {
+			newconn, err := net.DialTCP("tcp", nil, tcpaddr)
+			if err != nil {
+				return err
+			}
+			c.conns <- newconn
+		}
 	}
 	c.connected = true
 	return nil

@@ -371,6 +371,9 @@ func TestRunMapReduce(t *testing.T) {
 	//q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [JSON.parse(v.values[0].data)]; }\"}}]}"
 	q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [v]; }\"}}]}"
 
+	// MR with (very dirty) sleep of 2 seconds
+	//q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { var start = new Date().getTime(); while (new Date().getTime() < start + 2000); return [v]; }\"}}]}"
+
 	mr, err := client.RunMapReduce(q)
 	assert.T(t, err == nil)
 	assert.T(t, len(mr) == 1)
