@@ -77,30 +77,33 @@ func (c *Client) Connect() (err error) {
 
 // Close the connection
 func (c *Client) Close() {
-	c.conn.Close()
+	if c.conn_count <= 0 {
+		return
+	} else if c.conn_count == 1 {
+		c.conn.Close()
+	} else {
+		// Close all the connections
+		for i := 0; i < c.conn_count; i++ {
+			conn := <-c.conns
+			conn.Close()
+		}
+	}
+	c.conn_count = 0
 }
 
 // Write data to the connection
-func (c *Client) write(request []byte) (err error) {
-	// Connect if necessary
-	if !c.connected {
-		err = c.Connect()
-		if err != nil {
-			return err
-		}
-	}
-	c.mu.Lock() // Lock until the response is read
-	_, err = c.conn.Write(request)
+func (c *Client) write(conn *net.TCPConn, request []byte) (err error) {
+	_, err = conn.Write(request)
 
 	return err
 }
 
 // Read data from the connection
-func (c *Client) read(size int) (response []byte, err error) {
+func (c *Client) read(conn *net.TCPConn, size int) (response []byte, err error) {
 	response = make([]byte, size)
 	s := 0
 	for i := 0; (size > 0) && (i < size); {
-		s, err = c.conn.Read(response[i:size])
+		s, err = conn.Read(response[i:size])
 		i += s
 		if err != nil {
 			return
@@ -109,28 +112,63 @@ func (c *Client) read(size int) (response []byte, err error) {
 	return
 }
 
+// Gets the TCP connection for a client (either the only one, or one from the pool)
+func (c *Client) getConn() (err error, conn *net.TCPConn) {
+	err = nil
+	// Connect if necessary
+	if !c.connected {
+		err = c.Connect()
+		if err != nil {
+			return err, nil
+		}
+	}
+	// Select a connection to use 
+	if c.conn_count == 1 {
+		conn = c.conn
+		c.mu.Lock() // Lock until the response is read
+	} else {
+		conn = <-c.conns
+	}
+	return err, conn
+}
+
+// Releases the TCP connection for use by subsequent requests
+func (c *Client) releaseConn(conn *net.TCPConn) {
+	if c.conn_count == 1 {
+		// Unlock the Mutex so the single shared connection can be re-used
+		c.mu.Unlock()
+	} else {
+		// Return this connection down the channel for re-use
+		c.conns <- conn
+	}
+}
+
 // Request serializes the data (using protobuf), adds the header and sends it to Riak.
-func (c *Client) request(req proto.Message, name string) (err error) {
+func (c *Client) request(req proto.Message, name string) (err error, conn *net.TCPConn) {
+	err, conn = c.getConn()
+	if err != nil {
+		return err, nil
+	}
 	// Serialize the request using protobuf
 	pbmsg, err := proto.Marshal(req)
 	if err != nil {
-		return err
+		return err, conn
 	}
 	// Build message with header: <length:32> <msg_code:8> <pbmsg>
 	i := int32(len(pbmsg) + 1)
 	msgbuf := []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i), messageCodes[name]}
 	msgbuf = append(msgbuf, pbmsg...)
 	// Send to Riak
-	err = c.write(msgbuf)
+	err = c.write(conn, msgbuf)
 
-	return err
+	return err, conn
 }
 
 // Reponse deserializes the data and returns a struct.
-func (c *Client) response(response proto.Message) (err error) {
-
+func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error) {
+	defer c.releaseConn(conn)
 	// Read the response from Riak
-	msgbuf, err := c.read(5)
+	msgbuf, err := c.read(conn, 5)
 	if err != nil {
 		return err
 	}
@@ -140,11 +178,10 @@ func (c *Client) response(response proto.Message) (err error) {
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
-	pbmsg, err := c.read(msglen - 1)
+	pbmsg, err := c.read(conn, msglen-1)
 	if err != nil {
 		return err
 	}
-	defer c.mu.Unlock() // Unlock the Mutex after reading the complete response
 
 	// Deserialize, by default the calling method should provide the expected RbpXXXResp
 	msgcode := msgbuf[4]
@@ -166,10 +203,10 @@ func (c *Client) response(response proto.Message) (err error) {
 
 // Reponse deserializes the data from a MapReduce response and returns the data, 
 // this can come from multiple response messages
-func (c *Client) mr_response() (response [][]byte, err error) {
-
+func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
+	defer c.releaseConn(conn)
 	// Read the response from Riak
-	msgbuf, err := c.read(5)
+	msgbuf, err := c.read(conn, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +216,10 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
-	pbmsg, err := c.read(msglen - 1)
+	pbmsg, err := c.read(conn, msglen-1)
 	if err != nil {
 		return nil, err
 	}
-	defer c.mu.Unlock() // Unlock the Mutex after reading the complete response
 
 	// Deserialize, by default the calling method should provide the expected RbpXXXResp
 	msgcode := msgbuf[4]
@@ -203,7 +239,7 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 		for done == nil {
 			partial = &RpbMapRedResp{}
 			// Read another response
-			msgbuf, err = c.read(5)
+			msgbuf, err = c.read(conn, 5)
 			if err != nil {
 				return nil, err
 			}
@@ -213,7 +249,7 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 			}
 			// Read the message length, read the rest of the message if necessary
 			msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
-			pbmsg, err := c.read(msglen - 1)
+			pbmsg, err := c.read(conn, msglen-1)
 			if err != nil {
 				return nil, err
 			}
@@ -245,18 +281,16 @@ func (c *Client) mr_response() (response [][]byte, err error) {
 
 // Deserializes the data from possibly multiple packets, 
 // currently only for RpbListKeysResp.
-func (c *Client) mp_response() (response [][]byte, err error) {
-
+func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
+	defer c.releaseConn(conn)
 	var (
 		partial *RpbListKeysResp
 		msgcode byte
 	)
 
-	defer c.mu.Unlock() // Unlock the Mutex after reading the complete response
-
 	for {
 		// Read the response from Riak
-		msgbuf, err := c.read(5)
+		msgbuf, err := c.read(conn, 5)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +300,7 @@ func (c *Client) mp_response() (response [][]byte, err error) {
 		}
 		// Read the message length, read the rest of the message if necessary
 		msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
-		pbmsg, err := c.read(msglen - 1)
+		pbmsg, err := c.read(conn, msglen-1)
 		if err != nil {
 			return nil, err
 		}
@@ -307,9 +341,13 @@ func (c *Client) mp_response() (response [][]byte, err error) {
 func (c *Client) Ping() (err error) {
 	// Use hardcoded request, no need to serialize
 	msg := []byte{0, 0, 0, 1, messageCodes["RpbPingReq"]}
-	c.write(msg)
+	err, conn := c.getConn()
+	if err != nil {
+		return err
+	}
+	c.write(conn, msg)
 	// Get response and return error if there was one
-	err = c.response(nil)
+	err = c.response(conn, nil)
 
 	return err
 }
@@ -318,9 +356,13 @@ func (c *Client) Ping() (err error) {
 func (c *Client) Id() (id string, err error) {
 	// Use hardcoded request, no need to serialize
 	msg := []byte{0, 0, 0, 1, messageCodes["RpbGetClientIdReq"]}
-	c.write(msg)
+	err, conn := c.getConn()
+	if err != nil {
+		return id, err
+	}
+	c.write(conn, msg)
 	resp := &RpbGetClientIdResp{}
-	err = c.response(resp)
+	err = c.response(conn, resp)
 	if err == nil {
 		id = string(resp.ClientId)
 	}
@@ -330,20 +372,24 @@ func (c *Client) Id() (id string, err error) {
 // Set the client Id
 func (c *Client) SetId(id string) (err error) {
 	req := &RpbSetClientIdReq{ClientId: []byte(id)}
-	err = c.request(req, "RpbSetClientIdReq")
+	err, conn := c.request(req, "RpbSetClientIdReq")
 	if err != nil {
 		return err
 	}
-	err = c.response(req)
+	err = c.response(conn, req)
 	return err
 }
 
 // Get the server version
 func (c *Client) ServerVersion() (node string, version string, err error) {
 	msg := []byte{0, 0, 0, 1, messageCodes["RpbGetServerInfoReq"]}
-	c.write(msg)
+	err, conn := c.getConn()
+	if err != nil {
+		return node, version, err
+	}
+	c.write(conn, msg)
 	resp := &RpbGetServerInfoResp{}
-	err = c.response(resp)
+	err = c.response(conn, resp)
 	if err == nil {
 		node = string(resp.Node)
 		version = string(resp.ServerVersion)
@@ -356,12 +402,12 @@ func (c *Client) Bucket(name string) *Bucket {
 	req := &RpbGetBucketReq{
 		Bucket: []byte(name),
 	}
-	err := c.request(req, "RpbGetBucketReq")
+	err, conn := c.request(req, "RpbGetBucketReq")
 	if err != nil {
 		return nil
 	}
 	resp := &RpbGetBucketResp{}
-	err = c.response(resp)
+	err = c.response(conn, resp)
 	if err != nil {
 		return nil
 	}
