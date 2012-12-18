@@ -133,3 +133,15 @@ func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []s
 	}
 	return
 }
+
+// List all keys from bucket
+func (b *Bucket) ListKeys() (response [][]byte, err error) {
+	req := &RpbListKeysReq{Bucket: []byte(b.name)}
+
+	err = b.client.request(req, "RpbListKeysReq")
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.mp_response()
+}
