@@ -84,11 +84,11 @@ func (mr *MapReduce) Run() (resp [][]byte, err error) {
 		Request:     query,
 		ContentType: []byte("application/json"),
 	}
-	err = mr.client.request(req, "RpbMapRedReq")
+	err, conn := mr.client.request(req, "RpbMapRedReq")
 	if err != nil {
 		return nil, err
 	}
-	resp, err = mr.client.mr_response()
+	resp, err = mr.client.mr_response(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +101,11 @@ func (c *Client) RunMapReduce(query string) (resp [][]byte, err error) {
 		Request:     []byte(query),
 		ContentType: []byte("application/json"),
 	}
-	err = c.request(req, "RpbMapRedReq")
+	err, conn := c.request(req, "RpbMapRedReq")
 	if err != nil {
 		return nil, err
 	}
-	resp, err = c.mr_response()
+	resp, err = c.mr_response(conn)
 	if err != nil {
 		return nil, err
 	}
