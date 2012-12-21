@@ -3,12 +3,23 @@ package riak
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
+	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func setupConnection(t *testing.T) (client *Client) {
 	client = New("127.0.0.1:8087")
+	err := client.Connect()
+	assert.T(t, client != nil)
+	assert.T(t, err == nil)
+
+	return client
+}
+
+func setupConnections(t *testing.T, count int) (client *Client) {
+	client = NewPool("127.0.0.1:8087", count)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -501,13 +512,13 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, doc2.BLink.link.Tag == "BLink")
 	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
 	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
-	
+
 	// Load the parent from the link
 	parent2 := DocumentModel{}
 	err = doc2.ALink.Get(&parent2)
 	assert.T(t, err == nil)
 	assert.T(t, parent == parent2)
-	
+
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModelKey")
@@ -515,5 +526,68 @@ func TestModelWithLinks(t *testing.T) {
 	bucket = client.Bucket("testmodellinks.go")
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
+}
 
+func TestRunConnectionPool(t *testing.T) {
+	// Preparations
+	//fmt.Printf("Testing connection pool!\n")
+	client := setupConnections(t, 2)
+	assert.T(t, client != nil)
+	assert.T(t, client.conn_count == 2)
+	bucket := client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+	// Create object 1
+	obj1 := bucket.New("mrobj1")
+	assert.T(t, obj1 != nil)
+	obj1.ContentType = "application/json"
+	obj1.Data = []byte("{\"k\":\"v\"}")
+	err := obj1.Store()
+	assert.T(t, err == nil)
+	// Create object 2
+	obj2 := bucket.New("mrobj2")
+	assert.T(t, obj2 != nil)
+	obj2.ContentType = "application/json"
+	obj2.Data = []byte("{\"k\":\"v2\"}")
+	err = obj2.Store()
+	assert.T(t, err == nil)
+	// Link them
+	obj1.LinkTo(obj2, "test")
+	obj1.Store()
+
+	receiver := make(chan int)
+	// MR job with (very dirty) sleep of 2 seconds, send "1" to the channel afterwards
+	go func() {
+		q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { var start = new Date().getTime(); while (new Date().getTime() < start + 2000); return [v]; }\"}}]}"
+		mr, err := client.RunMapReduce(q)
+		assert.T(t, err == nil)
+		assert.T(t, len(mr) == 1)
+		fmt.Printf("1")
+		os.Stdout.Sync()
+		receiver <- 1
+	}()
+	// Sleep 100 milliseconds and then fetch a single value, send "2" after this fetch
+	<-time.After(100 * time.Millisecond)
+	go func() {
+		obj, err := bucket.Get("mrobj1")
+		assert.T(t, err == nil)
+		assert.T(t, obj != nil)
+		fmt.Printf("2")
+		os.Stdout.Sync()
+		receiver <- 2
+	}()
+	t1 := <-receiver
+	t2 := <-receiver
+	// Now "2" should be before "1" if multiple connections were really used (and Riak answered on time...)
+	//fmt.Printf("Times:\n1=%v\n2=%v\n", t1, t2)
+	assert.T(t, t2 < t1)
+
+	// Do some more queries, just to make sure the connections get properly re-used
+	for i := 0; i < 50; i++ {
+		obj, err := bucket.Get("mrobj1")
+		assert.T(t, err == nil)
+		assert.T(t, obj != nil)
+		fmt.Printf(".")
+		os.Stdout.Sync()
+	}
+	fmt.Printf("\n")
 }

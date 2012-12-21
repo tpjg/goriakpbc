@@ -22,11 +22,11 @@ func (b *Bucket) AllowMult() bool {
 func (b *Bucket) SetNVal(nval uint32) (err error) {
 	props := &RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult}
 	req := &RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
-	err = b.client.request(req, "RpbSetBucketReq")
+	err, conn := b.client.request(req, "RpbSetBucketReq")
 	if err != nil {
 		return err
 	}
-	err = b.client.response(req)
+	err = b.client.response(conn, req)
 	if err != nil {
 		return err
 	}
@@ -38,11 +38,11 @@ func (b *Bucket) SetNVal(nval uint32) (err error) {
 func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 	props := &RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult}
 	req := &RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
-	err = b.client.request(req, "RpbSetBucketReq")
+	err, conn := b.client.request(req, "RpbSetBucketReq")
 	if err != nil {
 		return err
 	}
-	err = b.client.response(req)
+	err = b.client.response(conn, req)
 	if err != nil {
 		return err
 	}
@@ -53,11 +53,11 @@ func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 // Delete a key/value from the bucket
 func (b *Bucket) Delete(key string) (err error) {
 	req := &RpbDelReq{Bucket: []byte(b.name), Key: []byte(key)}
-	err = b.client.request(req, "RpbDelReq")
+	err, conn := b.client.request(req, "RpbDelReq")
 	if err != nil {
 		return err
 	}
-	err = b.client.response(req)
+	err = b.client.response(conn, req)
 	if err != nil {
 		return err
 	}
@@ -81,12 +81,12 @@ func (b *Bucket) Exists(key string) (exists bool, err error) {
 		NotfoundOk: &t,
 		Head:       &t}
 
-	err = b.client.request(req, "RpbGetReq")
+	err, conn := b.client.request(req, "RpbGetReq")
 	if err != nil {
 		return false, err
 	}
 	resp := &RpbGetResp{}
-	err = b.client.response(resp)
+	err = b.client.response(conn, resp)
 	if err != nil {
 		return false, err
 	}
@@ -97,12 +97,12 @@ func (b *Bucket) Exists(key string) (exists bool, err error) {
 func (b *Bucket) IndexQuery(index string, key string) (keys []string, err error) {
 	req := &RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
 		Qtype: RpbIndexReq_eq.Enum(), Key: []byte(key)}
-	err = b.client.request(req, "RpbIndexReq")
+	err, conn := b.client.request(req, "RpbIndexReq")
 	if err != nil {
 		return nil, err
 	}
 	resp := &RpbIndexResp{}
-	err = b.client.response(resp)
+	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -118,12 +118,12 @@ func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []s
 	req := &RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
 		Qtype:    RpbIndexReq_range.Enum(),
 		RangeMin: []byte(min), RangeMax: []byte(max)}
-	err = b.client.request(req, "RpbIndexReq")
+	err, conn := b.client.request(req, "RpbIndexReq")
 	if err != nil {
 		return nil, err
 	}
 	resp := &RpbIndexResp{}
-	err = b.client.response(resp)
+	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -132,4 +132,16 @@ func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []s
 		keys[i] = string(v)
 	}
 	return
+}
+
+// List all keys from bucket
+func (b *Bucket) ListKeys() (response [][]byte, err error) {
+	req := &RpbListKeysReq{Bucket: []byte(b.name)}
+
+	err, conn := b.client.request(req, "RpbListKeysReq")
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.mp_response(conn)
 }

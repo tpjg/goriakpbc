@@ -32,10 +32,12 @@ func main() {
 }
 ```
 
-The library is still a work in progress, the API should resemble that of the Ruby riak-client.
+The library is still a work in progress. Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
-Especially MapReduce and Document Models still need a lot of work, however some functions that are already implemented are described below.
+The Document Models still need a lot of work like supporting many links and indexes, however some functions that are already implemented are described below.
+
+An experimental "pool" branch supports opening multiple connections to Riak so goroutines can access Riak concurrently. See the "riak_test.go" in the pool branch for an example.
 
 ### Secondary indexes (2i)
 
@@ -74,7 +76,7 @@ Map functions using Erlang instead of Javascript must be added using "MapErlang"
 
 ### Riak Document Models
 
-The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/seancribbs/ripple).
+The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/basho/ripple).
 
 This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus snake_case). Also it stores the model/struct name as _type in Riak just like ripple does.
 
