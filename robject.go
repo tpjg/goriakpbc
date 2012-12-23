@@ -72,13 +72,13 @@ func (obj *RObject) Store() (err error) {
 	}
 
 	// Send the request
-	err = obj.Bucket.client.request(req, "RpbPutReq")
+	err, conn := obj.Bucket.client.request(req, "RpbPutReq")
 	if err != nil {
 		return err
 	}
 	// Get response, ReturnHead is true, so we can store the vclock
 	resp := &RpbPutResp{}
-	err = obj.Bucket.client.response(resp)
+	err = obj.Bucket.client.response(conn, resp)
 	if err != nil {
 		return err
 	}
@@ -94,11 +94,11 @@ func (obj *RObject) Store() (err error) {
 // Delete the object from Riak
 func (obj *RObject) Destroy() (err error) {
 	req := &RpbDelReq{Bucket: []byte(obj.Bucket.name), Key: []byte(obj.Key), Vclock: obj.Vclock}
-	err = obj.Bucket.client.request(req, "RpbDelReq")
+	err, conn := obj.Bucket.client.request(req, "RpbDelReq")
 	if err != nil {
 		return err
 	}
-	err = obj.Bucket.client.response(req)
+	err = obj.Bucket.client.response(conn, req)
 	if err != nil {
 		return err
 	}
@@ -170,12 +170,12 @@ func (b *Bucket) Get(key string) (obj *RObject, err error) {
 		Bucket: []byte(b.name),
 		Key:    []byte(key),
 	}
-	err = b.client.request(req, "RpbGetReq")
+	err, conn := b.client.request(req, "RpbGetReq")
 	if err != nil {
 		return nil, err
 	}
 	resp := &RpbGetResp{}
-	err = b.client.response(resp)
+	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -196,12 +196,12 @@ func (obj *RObject) Reload() (err error) {
 		Bucket:     []byte(obj.Bucket.name),
 		Key:        []byte(obj.Key),
 		IfModified: obj.Vclock}
-	err = obj.Bucket.client.request(req, "RpbGetReq")
+	err, conn := obj.Bucket.client.request(req, "RpbGetReq")
 	if err != nil {
 		return err
 	}
 	resp := &RpbGetResp{}
-	err = obj.Bucket.client.response(resp)
+	err = obj.Bucket.client.response(conn, resp)
 	if err != nil {
 		return err
 	}
