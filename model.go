@@ -37,12 +37,19 @@ Also if the field name in Ripple is equal the extra tag is not needed, (e.g.
 if the Ripple class above would have a "property :Ip, String").
 */
 type Model struct {
-	//client  *Client
-	//bucket  *Bucket
-	//key     string
 	robject *RObject
 	parent  interface{} // Pointer to the parent struct (Device in example above)
 }
+
+// Link to one other model
+type One struct {
+	model  interface{}
+	link   Link
+	client *Client
+}
+
+// Link to many other models
+type Many []One
 
 func setval(source reflect.Value, dest reflect.Value) {
 	switch dest.Kind() {
@@ -54,6 +61,24 @@ func setval(source reflect.Value, dest reflect.Value) {
 		dest.SetFloat(source.Float())
 	case reflect.Int:
 		dest.SetInt(source.Int())
+	}
+}
+
+func (c *Client) setOneLink(source Link, dest reflect.Value) {
+	if dest.Kind() == reflect.Struct && dest.Type() == reflect.TypeOf(One{}) {
+		one := One{link: source, client: c}
+		mv := reflect.ValueOf(one)
+		dest.Set(mv)
+		return
+	}
+}
+
+func (c *Client) addOneLink(source Link, dest reflect.Value) {
+	if dest.Kind() == reflect.Slice && dest.Type() == reflect.TypeOf(Many{}) {
+		one := One{link: source, client: c}
+		mv := reflect.ValueOf(one)
+		// Add this One link to the slice
+		dest.Set(reflect.Append(dest, mv))
 	}
 }
 
@@ -142,6 +167,32 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 			if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
 				setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
 			}
+		} else if ft.Type.Name() == "One" {
+			var tag string
+			if ft.Tag != "" {
+				tag = string(ft.Tag)
+			} else {
+				tag = ft.Name
+			}
+			// Search in Links
+			for _, v := range obj.Links {
+				if v.Tag == tag {
+					c.setOneLink(v, fv)
+				}
+			}
+		} else if ft.Type.Name() == "Many" {
+			var tag string
+			if ft.Tag != "" {
+				tag = string(ft.Tag)
+			} else {
+				tag = ft.Name
+			}
+			// Search in Links
+			for _, v := range obj.Links {
+				if v.Tag == tag {
+					c.addOneLink(v, fv)
+				}
+			}
 		}
 	}
 	// Set the values in the RiakModel field
@@ -191,6 +242,27 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 	return
 }
 
+// Creates a link to a given model
+func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err error) {
+	// Check destination
+	dv, _, err := c.check_dest(dest)
+	if err != nil {
+		return err
+	}
+	// Get the Model field
+	model := &Model{}
+	mv := reflect.ValueOf(model)
+	mv = mv.Elem()
+	vobj := dv.FieldByName("RiakModel")
+	mv.Set(vobj)
+	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
+	if model.robject == nil {
+		return errors.New("Error in linkToModel - destination struct is not instantiated using riak.New or riak.Load")
+	}
+	obj.LinkTo(model.robject, tag)
+	return nil
+}
+
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	// Check destination
@@ -221,6 +293,34 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 			field = string(ft.Tag)
 		} else {
 			field = ft.Name
+		}
+		if ft.Type == reflect.TypeOf(One{}) {
+			// Save a link, set the One struct first
+			lmodel := &One{}
+			lmv := reflect.ValueOf(lmodel)
+			lmv = lmv.Elem()
+			lmv.Set(fv)
+			// Now use that to link with the given tag or the name
+			if ft.Tag != "" {
+				c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
+			} else {
+				c.linkToModel(model.robject, lmodel.model, ft.Name)
+			}
+		}
+		if ft.Type == reflect.TypeOf(Many{}) {
+			// Save the links, create a Many struct first
+			lmodels := &Many{}
+			lmv := reflect.ValueOf(lmodels)
+			lmv = lmv.Elem()
+			lmv.Set(fv)
+			// Now walk over those links...
+			for _, lmodel := range *lmodels {
+				if ft.Tag != "" {
+					c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
+				} else {
+					c.linkToModel(model.robject, lmodel.model, ft.Name)
+				}
+			}
 		}
 		switch ft.Type.Kind() {
 		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
@@ -324,4 +424,23 @@ func (m Model) SetKey(newKey string) (err error) {
 	}
 	m.robject.Key = newKey
 	return
+}
+
+func (o One) Link() (link Link) {
+	return o.link
+}
+
+func (o *One) Set(dest interface{}) {
+	o.model = dest
+}
+
+func (o *One) Get(dest interface{}) (err error) {
+	if o.client == nil {
+		return errors.New("riak.One link to other model not properly initialized")
+	}
+	return o.client.Load(o.link.Bucket, o.link.Key, dest)
+}
+
+func (m *Many) Add(dest interface{}) {
+	*m = append(*m, One{model: dest})
 }
