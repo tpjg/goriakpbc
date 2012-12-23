@@ -594,3 +594,44 @@ func TestRunConnectionPool(t *testing.T) {
 	}
 	fmt.Printf("\n")
 }
+
+type FriendLinks struct {
+	Friends   Many "friend"
+	RiakModel Model
+}
+
+func TestModelWithManyLinks(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create two new "DocumentModel"s to use as friends and save it
+	f1 := DocumentModel{FieldS: "friend1", FieldF: 1.0, FieldB: true}
+	err := client.New("testmodel.go", "f1", &f1)
+	assert.T(t, err == nil)
+	err = f1.RiakModel.Save()
+	assert.T(t, err == nil)
+	f2 := DocumentModel{FieldS: "friend2", FieldF: 2.0, FieldB: true}
+	err = client.New("testmodel.go", "f2", &f2)
+	assert.T(t, err == nil)
+	err = f2.RiakModel.Save()
+	assert.T(t, err == nil)
+
+	// Create a new "FriendLinks" to and save it
+	doc := FriendLinks{Friends: Many{One{model: &f1}, One{model: &f2}}}
+	err = client.New("testmodel.go", "TestMany", &doc)
+	assert.T(t, err == nil)
+	err = doc.RiakModel.Save()
+
+	// Now load a new document and verify it has two links
+	var doc2 FriendLinks
+	err = client.Load("testmodel.go", "TestMany", &doc2)
+	assert.T(t, err == nil)
+	assert.T(t, len(doc2.Friends) == 2)
+	for i, v := range doc2.Friends {
+		var f DocumentModel
+		err = v.Get(&f)
+		assert.T(t, err == nil)
+		fmt.Printf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
+	}
+}

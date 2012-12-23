@@ -49,11 +49,7 @@ type One struct {
 }
 
 // Link to many other models
-type Many struct {
-	models []interface{}
-	links  []Link
-	client *Client
-}
+type Many []One
 
 func setval(source reflect.Value, dest reflect.Value) {
 	switch dest.Kind() {
@@ -69,11 +65,20 @@ func setval(source reflect.Value, dest reflect.Value) {
 }
 
 func (c *Client) setOneLink(source Link, dest reflect.Value) {
-	if dest.Kind() == reflect.Struct {
+	if dest.Kind() == reflect.Struct && dest.Type() == reflect.TypeOf(One{}) {
 		one := One{link: source, client: c}
 		mv := reflect.ValueOf(one)
 		dest.Set(mv)
 		return
+	}
+}
+
+func (c *Client) addOneLink(source Link, dest reflect.Value) {
+	if dest.Kind() == reflect.Slice && dest.Type() == reflect.TypeOf(Many{}) {
+		one := One{link: source, client: c}
+		mv := reflect.ValueOf(one)
+		// Add this One link to the slice
+		dest.Set(reflect.Append(dest, mv))
 	}
 }
 
@@ -176,11 +181,16 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 				}
 			}
 		} else if ft.Type.Name() == "Many" {
+			var tag string
+			if ft.Tag != "" {
+				tag = string(ft.Tag)
+			} else {
+				tag = ft.Name
+			}
 			// Search in Links
 			for _, v := range obj.Links {
-				if v.Tag == string(ft.Tag) {
-					//addManyLink()
-					fmt.Printf("Riak Many Link : %v\n", v)
+				if v.Tag == tag {
+					c.addOneLink(v, fv)
 				}
 			}
 		}
@@ -284,7 +294,7 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 		} else {
 			field = ft.Name
 		}
-		if ft.Type.Name() == "One" {
+		if ft.Type == reflect.TypeOf(One{}) {
 			// Save a link, set the One struct first
 			lmodel := &One{}
 			lmv := reflect.ValueOf(lmodel)
@@ -295,6 +305,21 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 				c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
 			} else {
 				c.linkToModel(model.robject, lmodel.model, ft.Name)
+			}
+		}
+		if ft.Type == reflect.TypeOf(Many{}) {
+			// Save the links, create a Many struct first
+			lmodels := &Many{}
+			lmv := reflect.ValueOf(lmodels)
+			lmv = lmv.Elem()
+			lmv.Set(fv)
+			// Now walk over those links...
+			for _, lmodel := range *lmodels {
+				if ft.Tag != "" {
+					c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
+				} else {
+					c.linkToModel(model.robject, lmodel.model, ft.Name)
+				}
 			}
 		}
 		switch ft.Type.Kind() {
