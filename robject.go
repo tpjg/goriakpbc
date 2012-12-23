@@ -32,6 +32,7 @@ type RObject struct {
 	Indexes     map[string]string
 	conflict    bool
 	Siblings    []Sibling
+	Options     []map[string]uint32
 }
 
 // Store an RObject
@@ -69,6 +70,19 @@ func (obj *RObject) Store() (err error) {
 	for k, v := range obj.Indexes {
 		req.Content.Indexes[i] = &RpbPair{Key: []byte(k), Value: []byte(v)}
 		i += 1
+	}
+	// Add the options
+	for _, omap := range obj.Options {
+		for k, v := range omap {
+			switch k {
+			case "w":
+				req.W = &v
+			case "dw":
+				req.Dw = &v
+			case "pw":
+				req.Pw = &v
+			}
+		}
 	}
 
 	// Send the request
@@ -165,10 +179,20 @@ func (obj *RObject) LinkTo(target *RObject, tag string) {
 }
 
 // Get an object
-func (b *Bucket) Get(key string) (obj *RObject, err error) {
+func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, err error) {
 	req := &RpbGetReq{
 		Bucket: []byte(b.name),
 		Key:    []byte(key),
+	}
+	for _, omap := range options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			}
+		}
 	}
 	err, conn := b.client.request(req, "RpbGetReq")
 	if err != nil {
@@ -184,7 +208,7 @@ func (b *Bucket) Get(key string) (obj *RObject, err error) {
 		return &RObject{}, errors.New("Object not found")
 	}
 	// Create a new object and set the fields
-	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock}
+	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock, Options: options}
 	obj.setContent(resp)
 
 	return obj, nil
