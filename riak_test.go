@@ -365,22 +365,22 @@ func TestRunMapReduce(t *testing.T) {
 	obj1 := bucket.New("mrobj1")
 	assert.T(t, obj1 != nil)
 	obj1.ContentType = "application/json"
-	obj1.Data = []byte("{\"k\":\"v\"}")
+	obj1.Data = []byte(`{"k":"v"}`)
 	err := obj1.Store()
 	assert.T(t, err == nil)
 	// Create object 2
 	obj2 := bucket.New("mrobj2")
 	assert.T(t, obj2 != nil)
 	obj2.ContentType = "application/json"
-	obj2.Data = []byte("{\"k\":\"v2\"}")
+	obj2.Data = []byte(`{"k":"v2"}`)
 	err = obj2.Store()
 	assert.T(t, err == nil)
 	// Link them
 	obj1.LinkTo(obj2, "test")
 	obj1.Store()
 
-	//q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [JSON.parse(v.values[0].data)]; }\"}}]}"
-	q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { return [v]; }\"}}]}"
+	//q := `{"inputs":[["client_test.go","mrobj1"]],"query":[{"map":{"language":"javascript","keep":true,"source":"function(v) { return [JSON.parse(v.values[0].data)]; }"}}]}`
+	q := `{"inputs":[["client_test.go","mrobj1"]],"query":[{"map":{"language":"javascript","keep":true,"source":"function(v) { return [v]; }"}}]}`
 
 	mr, err := client.RunMapReduce(q)
 	assert.T(t, err == nil)
@@ -485,14 +485,14 @@ func TestRunConnectionPool(t *testing.T) {
 	obj1 := bucket.New("mrobj1")
 	assert.T(t, obj1 != nil)
 	obj1.ContentType = "application/json"
-	obj1.Data = []byte("{\"k\":\"v\"}")
+	obj1.Data = []byte(`{"k":"v"}`)
 	err := obj1.Store()
 	assert.T(t, err == nil)
 	// Create object 2
 	obj2 := bucket.New("mrobj2")
 	assert.T(t, obj2 != nil)
 	obj2.ContentType = "application/json"
-	obj2.Data = []byte("{\"k\":\"v2\"}")
+	obj2.Data = []byte(`{"k":"v2"}`)
 	err = obj2.Store()
 	assert.T(t, err == nil)
 	// Link them
@@ -502,7 +502,7 @@ func TestRunConnectionPool(t *testing.T) {
 	receiver := make(chan int)
 	// MR job with (very dirty) sleep of 2 seconds, send "1" to the channel afterwards
 	go func() {
-		q := "{\"inputs\":[[\"client_test.go\",\"mrobj1\"]],\"query\":[{\"map\":{\"language\":\"javascript\",\"keep\":true,\"source\":\"function(v) { var start = new Date().getTime(); while (new Date().getTime() < start + 2000); return [v]; }\"}}]}"
+		q := `{"inputs":[["client_test.go","mrobj1"]],"query":[{"map":{"language":"javascript","keep":true,"source":"function(v) { var start = new Date().getTime(); while (new Date().getTime() < start + 2000); return [v]; }"}}]}`
 		mr, err := client.RunMapReduce(q)
 		assert.T(t, err == nil)
 		assert.T(t, len(mr) == 1)
