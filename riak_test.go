@@ -56,7 +56,7 @@ func TestStoreObject(t *testing.T) {
 
 	bucket := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abc")
+	obj := bucket.New("abc", PW1, DW1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("some more data")
@@ -79,7 +79,7 @@ func TestGetAndDeleteObject(t *testing.T) {
 
 	bucket := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj, err := bucket.Get("abc")
+	obj, err := bucket.Get("abc", R1, PR1)
 	assert.T(t, err == nil)
 	assert.T(t, obj != nil)
 	/*
@@ -528,7 +528,7 @@ func TestRunConnectionPool(t *testing.T) {
 
 	// Do some more queries, just to make sure the connections get properly re-used
 	for i := 0; i < 50; i++ {
-		obj, err := bucket.Get("mrobj1")
+		obj, err := bucket.Get("mrobj1", R1)
 		assert.T(t, err == nil)
 		assert.T(t, obj != nil)
 		fmt.Printf(".")
