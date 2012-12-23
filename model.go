@@ -209,7 +209,7 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
 	}
 	// Start with the _type
-	data := []byte("{\"_type\":")
+	data := []byte(`{"_type":`)
 	js, _ := json.Marshal(dt.Name())
 	data = append(data, js...)
 	// Now add the other fields, as long as they're "simple" fields
