@@ -517,7 +517,10 @@ func TestModelWithLinks(t *testing.T) {
 	parent2 := DocumentModel{}
 	err = doc2.ALink.Get(&parent2)
 	assert.T(t, err == nil)
-	assert.T(t, parent == parent2)
+	assert.T(t, parent.FieldS == parent2.FieldS)
+	assert.T(t, parent.FieldF == parent2.FieldF)
+	assert.T(t, parent.FieldB == parent2.FieldB)
+	assert.T(t, parent.RiakModel.Key() == parent2.RiakModel.Key())
 
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
