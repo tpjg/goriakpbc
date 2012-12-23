@@ -41,7 +41,7 @@ type Model struct {
 	//bucket  *Bucket
 	//key     string
 	robject *RObject
-	parent interface{} // Pointer to the parent struct (Device in example above)
+	parent  interface{} // Pointer to the parent struct (Device in example above)
 }
 
 func setval(source reflect.Value, dest reflect.Value) {
@@ -100,7 +100,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 	dev := &Device{}
 	err := client.Load("devices", "12345", dev)
 */
-func (c *Client) Load(bucketname string, key string, dest interface{}) (err error) {
+func (c *Client) Load(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
 	// Check destination
 	dv, dt, err := c.check_dest(dest)
 	if err != nil {
@@ -112,7 +112,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}) (err erro
 		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
 		return
 	}
-	obj, err := bucket.Get(key)
+	obj, err := bucket.Get(key, options...)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the RiakModel field.
 */
-func (c *Client) New(bucketname string, key string, dest interface{}) (err error) {
+func (c *Client) New(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
 	// Check destination
 	dv, dt, err := c.check_dest(dest)
 	if err != nil {
@@ -184,7 +184,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}) (err error
 	}
 	// For the RiakModel field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
-	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json"}
+	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json", Options: options}
 	model.parent = dest
 	vobj.Set(mv)
 
