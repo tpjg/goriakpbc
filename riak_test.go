@@ -618,7 +618,9 @@ func TestModelWithManyLinks(t *testing.T) {
 	assert.T(t, err == nil)
 
 	// Create a new "FriendLinks" to and save it
-	doc := FriendLinks{Friends: Many{One{model: &f1}, One{model: &f2}}}
+	doc := FriendLinks{Friends: Many{One{model: &f1}}}
+	// Testing Many.Add while we're at it.
+	doc.Friends.Add(&f2)
 	err = client.New("testmodel.go", "TestMany", &doc)
 	assert.T(t, err == nil)
 	err = doc.RiakModel.Save()

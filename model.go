@@ -436,7 +436,11 @@ func (o *One) Set(dest interface{}) {
 
 func (o *One) Get(dest interface{}) (err error) {
 	if o.client == nil {
-		return errors.New("riake.One link to other model not properly initialized")
+		return errors.New("riak.One link to other model not properly initialized")
 	}
 	return o.client.Load(o.link.Bucket, o.link.Key, dest)
+}
+
+func (m *Many) Add(dest interface{}) {
+	*m = append(*m, One{model: dest})
 }
