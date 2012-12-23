@@ -37,7 +37,7 @@ To install run `go get github.com/tpjg/goriakpbc` and use import as in the examp
 
 The Document Models still need a lot of work like supporting many links and indexes, however some functions that are already implemented are described below.
 
-An experimental "pool" branch supports opening multiple connections to Riak so goroutines can access Riak concurrently. See the "riak_test.go" in the pool branch for an example.
+Now supports opening a pool of connections to Riak so goroutines can access Riak concurrently. See the "riak_test.go" for an example.
 
 ### Secondary indexes (2i)
 
