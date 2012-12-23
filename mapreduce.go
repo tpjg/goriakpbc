@@ -22,7 +22,7 @@ func (mr *MapReduce) Add(bucket string, key string) {
 }
 
 func (mr *MapReduce) LinkBucket(name string, keep bool) {
-	link := "{\"link\":{\"bucket\":\"" + name + "\", \"tag\":\"_\",\"keep\":"
+	link := `{"link":{"bucket":"` + name + `", "tag":"_","keep":`
 	if keep {
 		link = link + "true}}"
 	} else {
@@ -32,13 +32,13 @@ func (mr *MapReduce) LinkBucket(name string, keep bool) {
 }
 
 func (mr *MapReduce) Map(fun string, keep bool) {
-	m := "{\"map\":{\"language\":\"javascript\",\"keep\":"
+	m := `{"map":{"language":"javascript","keep":`
 	if keep {
 		m = m + "true,"
 	} else {
 		m = m + "false,"
 	}
-	m = m + "\"source\":\"" + fun + "\"}}"
+	m = m + `"source":"` + fun + `"}}`
 	mr.phases = append(mr.phases, m)
 }
 
@@ -64,7 +64,7 @@ func (mr *MapReduce) Query() (query []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	q := "{\"inputs\":" + string(inputs) + ", \"query\":["
+	q := `{"inputs":` + string(inputs) + `, "query":[`
 	for i, s := range mr.phases {
 		if i > 0 {
 			q = q + ","
