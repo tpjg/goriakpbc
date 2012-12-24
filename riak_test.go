@@ -5,6 +5,7 @@ import (
 	"github.com/bmizerany/assert"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -301,6 +302,18 @@ func TestObjectIndexes(t *testing.T) {
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
 	if err == nil {
 		fmt.Printf("2i query returned : %v\n", keys)
+	} else {
+		if err.Error() == "EOF" {
+			fmt.Println("2i queries over protobuf is not supported, maybe running a pre 1.2 version of Riak - skipping 2i tests.")
+			return
+		} else if err.Error() == "{error,{indexes_not_supported,riak_kv_bitcask_backend}}" {
+			fmt.Println("2i queries not support on bitcask backend - skipping 2i tests.")
+			return
+		} else if strings.Contains(err.Error(), "indexes_not_supported") {
+			fmt.Printf("2i queries not supported - skipping 2i tests (%v).\n", err)
+			return
+		}
+		fmt.Printf("2i query returned error : %v\n", err)
 	}
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
