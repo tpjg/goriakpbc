@@ -7,10 +7,18 @@ import (
 	"strconv"
 	"testing"
 	"time"
+	"net/http"
+	"encoding/json"
+	"io/ioutil"
+)
+
+const (
+	riak_http = "http://127.0.0.1:8098"
+	riak_pb = "127.0.0.1:8087"
 )
 
 func setupConnection(t *testing.T) (client *Client) {
-	client = New("127.0.0.1:8087")
+	client = New(riak_pb)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -19,12 +27,51 @@ func setupConnection(t *testing.T) (client *Client) {
 }
 
 func setupConnections(t *testing.T, count int) (client *Client) {
-	client = NewPool("127.0.0.1:8087", count)
+	client = NewPool(riak_pb, count)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
 
 	return client
+}
+
+// Tries to determine if the install is running bitcask in which case we
+// will skip tests on secondary indexes
+func run2iTests() bool {
+
+	type storageBackend struct {
+		Backend string `json:"storage_backend"`
+	}
+	var respJson storageBackend
+	var body []byte
+
+	resp, err := http.Get(riak_http + "/stats"); if err != nil {
+		goto undetermined
+	}
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body); if err != nil {
+		goto undetermined
+	}
+	if json.Unmarshal(body, &respJson) != nil {
+		goto undetermined
+	}
+
+	// If were able to confirm level db
+	if respJson.Backend == "riak_kv_eleveldb_backend" {
+		return true
+	}
+
+	// return false if request succeded, but storage engine was not leveldb
+	return false
+
+	// Unable to determine storage engine, go ahead and run tests to be
+	// on the safe side
+	undetermined:
+		fmt.Printf("%v\n", err)
+		fmt.Println(`Could not deterine storage engine.
+			If you are using a storage engine that does not support secondary
+			indexes you may see test failures.`)
+	return true
 }
 
 func TestCanConnect(t *testing.T) {
@@ -265,6 +312,9 @@ func TestObjectMetadata(t *testing.T) {
 }
 
 func TestObjectIndexes(t *testing.T) {
+	if run2iTests() == false {
+		fmt.Println("Skipping secondary index tests (2i)")
+	}
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -301,6 +351,8 @@ func TestObjectIndexes(t *testing.T) {
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
 	if err == nil {
 		fmt.Printf("2i query returned : %v\n", keys)
+	} else {
+		fmt.Printf("Error getting list of keys using index query - %v", err)
 	}
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
