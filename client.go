@@ -33,6 +33,19 @@ type Client struct {
 	conns        chan *net.TCPConn
 }
 
+/* 
+Options for storing and retrieving data, only a few are defined, different
+values can be supplied by creating a map in the application, for example:
+  bucket.Get("key", map[string]int{"r":2})
+*/
+var (
+	R1  = map[string]uint32{"r": 1}
+	PR1 = map[string]uint32{"pr": 1}
+	W1  = map[string]uint32{"w": 1}
+	DW1 = map[string]uint32{"dw": 1}
+	PW1 = map[string]uint32{"pw": 1}
+)
+
 // Returns a new Client connection
 func New(addr string) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}

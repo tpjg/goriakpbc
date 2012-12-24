@@ -65,10 +65,11 @@ func (b *Bucket) Delete(key string) (err error) {
 }
 
 // Create a new RObject
-func (b *Bucket) New(key string) *RObject {
+func (b *Bucket) New(key string, options ...map[string]uint32) *RObject {
 	obj := &RObject{Key: key, Bucket: b,
 		Links: make([]Link, 0),
-		Meta:  make(map[string]string), Indexes: make(map[string]string)}
+		Meta:  make(map[string]string), Indexes: make(map[string]string),
+		Options: options}
 	return obj
 }
 

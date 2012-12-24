@@ -103,7 +103,7 @@ func TestStoreObject(t *testing.T) {
 
 	bucket := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abc")
+	obj := bucket.New("abc", PW1, DW1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("some more data")
@@ -126,7 +126,7 @@ func TestGetAndDeleteObject(t *testing.T) {
 
 	bucket := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj, err := bucket.Get("abc")
+	obj, err := bucket.Get("abc", R1, PR1)
 	assert.T(t, err == nil)
 	assert.T(t, obj != nil)
 	/*
@@ -493,7 +493,7 @@ func TestModel(t *testing.T) {
 
 	// Create a new "DocumentModel" and save it
 	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
-	err := client.New("testmodel.go", "TestModel", &doc)
+	err := client.New("testmodel.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
 	err = doc.RiakModel.Save()
@@ -501,7 +501,7 @@ func TestModel(t *testing.T) {
 
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
 	doc2 := DocumentModel{}
-	err = client.Load("testmodel.go", "TestModel", &doc2)
+	err = client.Load("testmodel.go", "TestModelKey", &doc2)
 	assert.T(t, err == nil)
 	assert.T(t, doc2.FieldS == doc.FieldS)
 	assert.T(t, doc2.FieldF == doc.FieldF)
@@ -510,18 +510,76 @@ func TestModel(t *testing.T) {
 	// Get the key
 	key, err := client.Key(&doc2)
 	assert.T(t, err == nil)
-	assert.T(t, key == "TestModel")
+	assert.T(t, key == "TestModelKey")
 	// Set it differently
-	err = client.SetKey("newTestModel", &doc2)
+	err = client.SetKey("newTestModelKey", &doc2)
 	assert.T(t, err == nil)
 	// And test that it changed by getting it again
 	key, err = client.Key(&doc2)
 	assert.T(t, err == nil)
-	assert.T(t, key == "newTestModel")
+	assert.T(t, key == "newTestModelKey")
 
 	// Cleanup
 	bucket := client.Bucket("testmodel.go")
-	err = bucket.Delete("TestModel")
+	err = bucket.Delete("TestModelKey")
+	assert.T(t, err == nil)
+}
+
+type DocumentModelWithLinks struct {
+	FieldS    string
+	ALink     One "tag_as_parent"
+	BLink     One // Will automatically use own name as a tag when linking
+	RiakModel Model
+}
+
+func TestModelWithLinks(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a new "DocumentModel" to use as a parent and save it
+	parent := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err := client.New("testmodel.go", "TestModelKey", &parent)
+	assert.T(t, err == nil)
+	//err = client.Save(&doc)
+	err = parent.RiakModel.Save()
+	assert.T(t, err == nil)
+
+	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
+	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}}
+	doc.BLink.Set(&parent) // testing One.Set while we're at it
+	err = client.New("testmodellinks.go", "TestModelKey", &doc)
+	assert.T(t, err == nil)
+	//err = client.Save(&doc)
+	err = doc.RiakModel.Save()
+	assert.T(t, err == nil)
+
+	// Load it from Riak and check that the fields of the struct are set correctly, including the link to the parent
+	doc2 := DocumentModelWithLinks{}
+	err = client.Load("testmodellinks.go", "TestModelKey", &doc2)
+	assert.T(t, err == nil)
+	assert.T(t, doc2.FieldS == doc.FieldS)
+	assert.T(t, doc2.ALink.model == nil) // Related documents are not loaded automatically, only the link is populated
+	assert.T(t, doc2.ALink.link.Tag == "tag_as_parent")
+	assert.T(t, doc2.BLink.link.Tag == "BLink")
+	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
+	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
+
+	// Load the parent from the link
+	parent2 := DocumentModel{}
+	err = doc2.ALink.Get(&parent2)
+	assert.T(t, err == nil)
+	assert.T(t, parent.FieldS == parent2.FieldS)
+	assert.T(t, parent.FieldF == parent2.FieldF)
+	assert.T(t, parent.FieldB == parent2.FieldB)
+	assert.T(t, parent.RiakModel.Key() == parent2.RiakModel.Key())
+
+	// Cleanup
+	bucket := client.Bucket("testmodel.go")
+	err = bucket.Delete("TestModelKey")
+	assert.T(t, err == nil)
+	bucket = client.Bucket("testmodellinks.go")
+	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
 }
 
@@ -580,11 +638,54 @@ func TestRunConnectionPool(t *testing.T) {
 
 	// Do some more queries, just to make sure the connections get properly re-used
 	for i := 0; i < 50; i++ {
-		obj, err := bucket.Get("mrobj1")
+		obj, err := bucket.Get("mrobj1", R1)
 		assert.T(t, err == nil)
 		assert.T(t, obj != nil)
 		fmt.Printf(".")
 		os.Stdout.Sync()
 	}
 	fmt.Printf("\n")
+}
+
+type FriendLinks struct {
+	Friends   Many "friend"
+	RiakModel Model
+}
+
+func TestModelWithManyLinks(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create two new "DocumentModel"s to use as friends and save it
+	f1 := DocumentModel{FieldS: "friend1", FieldF: 1.0, FieldB: true}
+	err := client.New("testmodel.go", "f1", &f1)
+	assert.T(t, err == nil)
+	err = f1.RiakModel.Save()
+	assert.T(t, err == nil)
+	f2 := DocumentModel{FieldS: "friend2", FieldF: 2.0, FieldB: true}
+	err = client.New("testmodel.go", "f2", &f2)
+	assert.T(t, err == nil)
+	err = f2.RiakModel.Save()
+	assert.T(t, err == nil)
+
+	// Create a new "FriendLinks" to and save it
+	doc := FriendLinks{Friends: Many{One{model: &f1}}}
+	// Testing Many.Add while we're at it.
+	doc.Friends.Add(&f2)
+	err = client.New("testmodel.go", "TestMany", &doc)
+	assert.T(t, err == nil)
+	err = doc.RiakModel.Save()
+
+	// Now load a new document and verify it has two links
+	var doc2 FriendLinks
+	err = client.Load("testmodel.go", "TestMany", &doc2)
+	assert.T(t, err == nil)
+	assert.T(t, len(doc2.Friends) == 2)
+	for i, v := range doc2.Friends {
+		var f DocumentModel
+		err = v.Get(&f)
+		assert.T(t, err == nil)
+		fmt.Printf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
+	}
 }
