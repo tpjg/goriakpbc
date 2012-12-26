@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -90,9 +91,11 @@ func (c *Client) Connect() (err error) {
 
 // Close the connection
 func (c *Client) Close() {
-	if c.conn_count <= 0 {
+	if !c.connected {
 		return
-	} else if c.conn_count == 1 {
+	}
+
+	if c.conn_count == 1 {
 		c.conn.Close()
 	} else {
 		// Close all the connections
@@ -101,7 +104,7 @@ func (c *Client) Close() {
 			conn.Close()
 		}
 	}
-	c.conn_count = 0
+	c.connected = false
 }
 
 // Write data to the connection
@@ -173,7 +176,23 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 	msgbuf = append(msgbuf, pbmsg...)
 	// Send to Riak
 	err = c.write(conn, msgbuf)
+	// If an error occurred when sending request
+	if err != nil {
+		// Make sure connection will be released in the end
+		defer c.releaseConn(conn)
 
+		var errno syscall.Errno
+
+		// If the error is not recoverable like a broken pipe, close all connections,
+		// so next time when getConn() is called it will Connect() again
+		if operr, ok := err.(*net.OpError); ok {
+			if errno, ok = operr.Err.(syscall.Errno); ok {
+				if errno == syscall.EPIPE {
+					c.Close()
+				}
+			}
+		}
+	}
 	return err, conn
 }
 
