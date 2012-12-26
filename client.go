@@ -165,13 +165,19 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 	err = c.write(conn, msgbuf)
 	// If an error occurred when sending request
 	if err != nil {
-		// Release connection in the end
+		// Make sure connection will be released in the end
 		defer c.releaseConn(conn)
 
-		// If pipe is broken, close all connections,
-		// so next time when getConn is used it will Connect() again
-		if err == syscall.EPIPE {
-			c.Close()
+		var errno syscall.Errno
+
+		// If the error is not recoverable like a broken pipe, close all connections,
+		// so next time when getConn() is called it will Connect() again
+		if operr, ok := err.(*net.OpError); ok {
+			if errno, ok = operr.Err.(syscall.Errno); ok {
+				if errno == syscall.EPIPE {
+					c.Close()
+				}
+			}
 		}
 	}
 	return err, conn
