@@ -160,7 +160,10 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 	msgbuf = append(msgbuf, pbmsg...)
 	// Send to Riak
 	err = c.write(conn, msgbuf)
-
+	// If an error occurred when sending request, release connection
+	if err != nil {
+		defer c.releaseConn(conn)
+	}
 	return err, conn
 }
 
