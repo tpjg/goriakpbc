@@ -55,7 +55,7 @@ func TestStoreObject(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	obj := bucket.New("abc", PW1, DW1)
 	assert.T(t, obj != nil)
@@ -78,7 +78,7 @@ func TestGetAndDeleteObject(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	obj, err := bucket.Get("abc", R1, PR1)
 	assert.T(t, err == nil)
@@ -102,7 +102,7 @@ func TestObjectsWithSiblings(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	err := bucket.SetAllowMult(true)
 	assert.T(t, err == nil)
@@ -132,13 +132,14 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, err == nil)
 	err = bucket.SetAllowMult(false)
 	assert.T(t, err == nil)
+	_ = bucket.Delete("def")
 }
 
 func TestObjectReload(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Create an object
@@ -172,7 +173,7 @@ func TestExists(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Check for a non-existing key
@@ -202,7 +203,7 @@ func TestObjectLinks(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Create object 1
@@ -241,7 +242,7 @@ func TestObjectMetadata(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Create object
@@ -269,7 +270,7 @@ func TestObjectIndexes(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Create object
@@ -339,7 +340,7 @@ func TestBigObject(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 
 	// Create object
@@ -372,7 +373,7 @@ func TestRunMapReduce(t *testing.T) {
 	// Preparations
 	client := setupConnection(t)
 	assert.T(t, client != nil)
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	// Create object 1
 	obj1 := bucket.New("mrobj1")
@@ -404,7 +405,7 @@ func TestMapReduce(t *testing.T) {
 	// Preparations
 	client := setupConnection(t)
 	assert.T(t, client != nil)
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	// Create object 1
 	obj1 := bucket.New("mrobj1")
@@ -481,7 +482,7 @@ func TestModel(t *testing.T) {
 	assert.T(t, key == "newTestModelKey")
 
 	// Cleanup
-	bucket := client.Bucket("testmodel.go")
+	bucket, _ := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
 }
@@ -536,10 +537,10 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, parent.RiakModel.Key() == parent2.RiakModel.Key())
 
 	// Cleanup
-	bucket := client.Bucket("testmodel.go")
+	bucket, _ := client.Bucket("testmodel.go")
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
-	bucket = client.Bucket("testmodellinks.go")
+	bucket, _ = client.Bucket("testmodellinks.go")
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
 }
@@ -550,7 +551,7 @@ func TestRunConnectionPool(t *testing.T) {
 	client := setupConnections(t, 2)
 	assert.T(t, client != nil)
 	assert.T(t, client.conn_count == 2)
-	bucket := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
 	// Create object 1
 	obj1 := bucket.New("mrobj1")

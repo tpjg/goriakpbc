@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	bucket := client.Bucket("tstriak")
+	bucket, _ := client.Bucket("tstriak")
 	obj := bucket.New("tstobj")
 	obj.ContentType = "application/json"
 	obj.Data = []byte("{'field':'value'}")

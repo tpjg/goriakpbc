@@ -132,9 +132,9 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 		return err
 	}
 	// Fetch the object from Riak.
-	bucket := c.Bucket(bucketname)
-	if bucket == nil {
-		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
+	bucket, err := c.Bucket(bucketname)
+	if bucket == nil || err != nil {
+		err = fmt.Errorf("Can't get bucket for %v - %v", dt.Name(), err)
 		return
 	}
 	obj, err := bucket.Get(key, options...)
@@ -217,9 +217,9 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 		return err
 	}
 	// Fetch the object from Riak.
-	bucket := c.Bucket(bucketname)
-	if bucket == nil {
-		err = fmt.Errorf("Can't get bucket for %v", dt.Name())
+	bucket, err := c.Bucket(bucketname)
+	if bucket == nil || err != nil {
+		err = fmt.Errorf("Can't get bucket for %v - %v", dt.Name(), err)
 		return
 	}
 	// Check if the RObject field within RiakModel is still nill, otherwise
