@@ -651,3 +651,33 @@ func TestModelWithManyLinks(t *testing.T) {
 		fmt.Printf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
 	}
 }
+
+func TestBrokenConnection(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	/* 
+		Abuse direct access to underlying TCP connection, send something Riak
+		does not accept so it closes the connection on that end. This will result
+		in a few writes still succeeding, receiving an EOF and finally the write
+		failing with a broken pipe message.
+	*/
+	fmt.Printf("Testing a broken connection to Riak ...")
+	msg := []byte{250, 0, 0, 1, 250, 250}
+	c, cerr := client.conn.Write(msg)
+	fmt.Printf("%v bytes written - err=%v\n", c, cerr)
+
+	bucket, _ := client.Bucket("client_test.go")
+	bucket, _ = client.Bucket("client_test.go")
+	bucket, _ = client.Bucket("client_test.go")
+	bucket, _ = client.Bucket("client_test.go")
+	bucket, _ = client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+	obj := bucket.New("abcdefghijk", PW1, DW1)
+	assert.T(t, obj != nil)
+	obj.ContentType = "text/plain"
+	obj.Data = []byte("some more data")
+	err := obj.Store()
+	assert.T(t, err == nil)
+	assert.T(t, obj.Vclock != nil)
+}
