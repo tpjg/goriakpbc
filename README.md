@@ -2,7 +2,9 @@ riak (goriakpbc)
 =======
 
 Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb (github.com/mrb/riakpbc).
-It implements a connection to Riak using protobuf.
+It implements a connection to Riak using Protocol Buffers.
+
+A simple program using goriakpcb:
 
 ```go
 package main
@@ -32,12 +34,10 @@ func main() {
 }
 ```
 
-The library is still a work in progress. Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
+Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
-The Document Models still need a lot of work like supporting many links and indexes, however some functions that are already implemented are described below.
-
-Now supports opening a pool of connections to Riak so goroutines can access Riak concurrently. See the "riak_test.go" for an example.
+More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library.
 
 ### Secondary indexes (2i)
 
@@ -45,7 +45,7 @@ Secondary indexes are supported and can be queried for equality using IndexQuery
 
 ```go
 
-obj := bucket.New("indexes")
+obj, _ := bucket.New("indexes")
 obj.ContentType = "text/plain"
 obj.Data = []byte("indexes to keep")
 obj.Indexes["test_int"] = strconv.Itoa(123)
@@ -76,7 +76,9 @@ Map functions using Erlang instead of Javascript must be added using "MapErlang"
 
 ### Riak Document Models
 
-The package now contains some rudimentary support for "Document Models". This is implemented in such a way to easily integrate a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/basho/ripple).
+Document Models, commonly referred to as ORM (Object-Relational Mapping) in other database drivers, maps Go structs to an object in Riak and supports links between objects. Some simple usage examples are described below.
+
+The package now contains support for "Document Models". This is implemented in to allow easy integration of a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/basho/ripple).
 
 This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus snake_case). Also it stores the model/struct name as _type in Riak just like ripple does.
 
@@ -110,7 +112,7 @@ dev.Description = "something else"
 err = client.SaveAs("newkey", &dev) // or: err=dev.RiakModel.SaveAs("newKey")
 ```
 
-### Full documentation (including protobuf generated)
+### Full API documentation (including protobuf generated)
 
 `http://go.pkgdoc.org/github.com/tpjg/goriakpbc` or `go doc`
 
