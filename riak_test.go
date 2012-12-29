@@ -48,7 +48,7 @@ func TestGetServerVersion(t *testing.T) {
 	assert.T(t, node != "")
 	assert.T(t, response != "")
 
-	fmt.Printf("Riak server : %s with version %s\n", node, response)
+	t.Logf("Riak server : %s with version %s\n", node, response)
 }
 
 func TestStoreObject(t *testing.T) {
@@ -66,11 +66,11 @@ func TestStoreObject(t *testing.T) {
 	assert.T(t, obj.Vclock != nil)
 	/*
 		if err != nil {
-			fmt.Printf("Fetch resulted in %s\n", err.Error())
+			t.Logf("Fetch resulted in %s\n", err.Error())
 		}
-		fmt.Printf("obj data : %s\n", string(obj.Data))
-		fmt.Printf("obj key  : %s\n", obj.Key)
-		fmt.Printf("vclock   : %s\n", obj.Vclock)
+		t.Logf("obj data : %s\n", string(obj.Data))
+		t.Logf("obj key  : %s\n", obj.Key)
+		t.Logf("vclock   : %s\n", obj.Vclock)
 	*/
 }
 
@@ -84,14 +84,14 @@ func TestGetAndDeleteObject(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, obj != nil)
 	/*
-		fmt.Printf("obj key  : %s\n", obj.Key)
-		fmt.Printf("vclock   : %s\n", obj.Vclock)
+		t.Logf("obj key  : %s\n", obj.Key)
+		t.Logf("vclock   : %s\n", obj.Vclock)
 		if obj.conflict {
 			for i, v := range obj.Siblings {
-				fmt.Printf("%d - %s\n", i, v.Data)
+				t.Logf("%d - %s\n", i, v.Data)
 			}
 		} else {
-			fmt.Printf("obj data : %s\n", string(obj.Data))
+			t.Logf("obj data : %s\n", string(obj.Data))
 		}
 	*/
 	err = bucket.Delete("abc")
@@ -302,7 +302,7 @@ func TestObjectIndexes(t *testing.T) {
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
 	if err == nil {
-		fmt.Printf("2i query returned : %v\n", keys)
+		t.Logf("2i query returned : %v\n", keys)
 	} else {
 		if err.Error() == "EOF" {
 			fmt.Println("2i queries over protobuf is not supported, maybe running a pre 1.2 version of Riak - skipping 2i tests.")
@@ -311,10 +311,10 @@ func TestObjectIndexes(t *testing.T) {
 			fmt.Println("2i queries not support on bitcask backend - skipping 2i tests.")
 			return
 		} else if strings.Contains(err.Error(), "indexes_not_supported") {
-			fmt.Printf("2i queries not supported - skipping 2i tests (%v).\n", err)
+			t.Logf("2i queries not supported - skipping 2i tests (%v).\n", err)
 			return
 		}
-		fmt.Printf("2i query returned error : %v\n", err)
+		t.Logf("2i query returned error : %v\n", err)
 	}
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
@@ -322,7 +322,7 @@ func TestObjectIndexes(t *testing.T) {
 	// Get a list of keys using the index range query
 	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
 	if err == nil {
-		fmt.Printf("2i range query returned : %v\n", keys)
+		t.Logf("2i range query returned : %v\n", keys)
 	}
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 2)
@@ -524,8 +524,8 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, doc2.ALink.model == nil) // Related documents are not loaded automatically, only the link is populated
 	assert.T(t, doc2.ALink.link.Tag == "tag_as_parent")
 	assert.T(t, doc2.BLink.link.Tag == "BLink")
-	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
-	fmt.Printf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
+	t.Logf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.ALink.model, doc2.ALink.link)
+	t.Logf("Testing DocumentModelWithLinks - One - %v - %v\n", doc2.BLink.model, doc2.BLink.link)
 
 	// Load the parent from the link
 	parent2 := DocumentModel{}
@@ -545,9 +545,20 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, err == nil)
 }
 
+/*
+Test multiple simultaneous connections. This runs a long running MapReduce in a
+goroutine and a quick Riak operation in another goroutine that is started 100ms
+later. Since the operations are not blocking each other the second operation
+should finish before the first (long running) operation.
+*/
 func TestRunConnectionPool(t *testing.T) {
+	// Skip this test if test.short is set
+	if testing.Short() {
+		t.Log("Skipping TestRunConnectionPool")
+		return
+	}
 	// Preparations
-	//fmt.Printf("Testing connection pool!\n")
+	fmt.Printf("Testing multiple simultaneous connections .")
 	client := setupConnections(t, 2)
 	assert.T(t, client != nil)
 	assert.T(t, client.conn_count == 2)
@@ -595,7 +606,6 @@ func TestRunConnectionPool(t *testing.T) {
 	t1 := <-receiver
 	t2 := <-receiver
 	// Now "2" should be before "1" if multiple connections were really used (and Riak answered on time...)
-	//fmt.Printf("Times:\n1=%v\n2=%v\n", t1, t2)
 	assert.T(t, t2 < t1)
 
 	// Do some more queries, just to make sure the connections get properly re-used
@@ -648,7 +658,7 @@ func TestModelWithManyLinks(t *testing.T) {
 		var f DocumentModel
 		err = v.Get(&f)
 		assert.T(t, err == nil)
-		fmt.Printf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
+		t.Logf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
 	}
 }
 
@@ -662,10 +672,10 @@ func TestBrokenConnection(t *testing.T) {
 		in a few writes still succeeding, receiving an EOF and finally the write
 		failing with a broken pipe message.
 	*/
-	fmt.Printf("Testing a broken connection to Riak ...")
+	t.Logf("Testing a broken connection to Riak ...")
 	msg := []byte{250, 0, 0, 1, 250, 250}
 	c, cerr := client.conn.Write(msg)
-	fmt.Printf("%v bytes written - err=%v\n", c, cerr)
+	t.Logf("%v bytes written - err=%v\n", c, cerr)
 
 	bucket, _ := client.Bucket("client_test.go")
 	bucket, _ = client.Bucket("client_test.go")
