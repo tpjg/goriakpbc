@@ -83,7 +83,7 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 }
 
 // Check if the passed destination is a pointer to a struct with RiakModel field
-func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, err error) {
+func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
 		err = errors.New("Destination is not a pointer (to a struct)")
@@ -96,19 +96,14 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 		err = errors.New("Destination is not a (pointer to a) struct")
 		return
 	}
-	dobj, exist := dt.FieldByName("RiakModel")
-	if !exist {
-		err = errors.New("Destination has no RiakModel field")
-		return
+	for i := 0; i < dt.NumField(); i++ {
+		dobj := dt.Field(i)
+		if dobj.Type.Kind() == reflect.Struct && dobj.Type == reflect.TypeOf(Model{}) {
+			rm = dv.Field(i) // Return the Model field value
+			return
+		}
 	}
-	if dobj.Type.Kind() != reflect.Struct {
-		err = errors.New("Destination RiakModel field is not a Model struct")
-		return
-	}
-	if dobj.Type.Name() != "Model" {
-		err = errors.New("Destination RiakModel field is not a Model")
-		return
-	}
+	err = errors.New("Destination has no riak.Model field")
 	return
 }
 
@@ -127,7 +122,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 */
 func (c *Client) Load(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
 	// Check destination
-	dv, dt, err := c.check_dest(dest)
+	dv, dt, rm, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -199,8 +194,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 	model := &Model{robject: obj, parent: dest}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	vobj.Set(mv)
+	rm.Set(mv)
 
 	return
 }
@@ -212,7 +206,7 @@ a struct that has the RiakModel field.
 */
 func (c *Client) New(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
 	// Check destination
-	dv, dt, err := c.check_dest(dest)
+	_, dt, rm, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -228,16 +222,15 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 	model := &Model{}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	mv.Set(vobj)
+	mv.Set(rm)
 	if model.robject != nil {
-		return errors.New("Destination struct already has an instantiated RiakModel (this struct is probably not new)")
+		return errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
 	}
 	// For the RiakModel field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
 	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json", Options: options}
 	model.parent = dest
-	vobj.Set(mv)
+	rm.Set(mv)
 
 	return
 }
@@ -245,7 +238,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 // Creates a link to a given model
 func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err error) {
 	// Check destination
-	dv, _, err := c.check_dest(dest)
+	_, _, rm, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -253,8 +246,7 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 	model := &Model{}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	mv.Set(vobj)
+	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
 		return errors.New("Error in linkToModel - destination struct is not instantiated using riak.New or riak.Load")
@@ -266,7 +258,7 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	// Check destination
-	dv, dt, err := c.check_dest(dest)
+	dv, dt, rm, err := c.check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -274,8 +266,7 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	model := &Model{}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	mv.Set(vobj)
+	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
 		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
@@ -370,7 +361,7 @@ func (m *Model) Save() (err error) {
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
-	dv, _, err := c.check_dest(dest)
+	_, _, rm, err := c.check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -378,8 +369,7 @@ func (c *Client) Key(dest interface{}) (key string, err error) {
 	model := &Model{}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	mv.Set(vobj)
+	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
 		err = errors.New("Destination struct is not instantiated using riak.New or riak.Load")
@@ -399,7 +389,7 @@ func (m Model) Key() (key string) {
 // Set the Key value, note that this does not save the model, it only changes the data structure
 func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	// Check destination
-	dv, _, err := c.check_dest(dest)
+	_, _, rm, err := c.check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -407,8 +397,7 @@ func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	model := &Model{}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
-	vobj := dv.FieldByName("RiakModel")
-	mv.Set(vobj)
+	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
 		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")

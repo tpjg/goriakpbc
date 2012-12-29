@@ -97,10 +97,10 @@ can be mapped to the following Go struct:
         DownloadEnabled  bool    "download_enabled"
         Ip               string  "ip"
         Description      string  "description"
-        RiakModel        riak.Model
+        riak.Model
     }
 ```
-Note that it is required to have a "RiakModel" field that is a riak.Model.
+Note that it is required to have an (anonymous) riak.Model field. If the riak.Model field is an anonymous field this has the benefit that the functions like "Save" or "SaveAs" can be called directly as in the example below.
 
 To get an instantiated struct from Riak would then require only a call to the riak.Client "Load" function, and to store it call "Save" or "SaveAs":
 ```go
@@ -109,7 +109,8 @@ err := client.Connect()
 var dev Device 
 err = client.Load("devices", "abcdefghijklm", &dev)
 dev.Description = "something else"
-err = client.SaveAs("newkey", &dev) // or: err=dev.RiakModel.SaveAs("newKey")
+err = dev.SaveAs("newkey")
+// or using the riak.Client "client": err = client.SaveAs("newkey", &dev) 
 ```
 
 ### Full API documentation (including protobuf generated)
