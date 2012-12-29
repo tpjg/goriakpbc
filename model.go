@@ -216,7 +216,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 		err = fmt.Errorf("Can't get bucket for %v - %v", dt.Name(), err)
 		return
 	}
-	// Check if the RObject field within RiakModel is still nill, otherwise
+	// Check if the RObject field within riak.Model is still nill, otherwise
 	// this destination (dest) is probably an already fully instantiated 
 	// struct.
 	model := &Model{}
@@ -226,7 +226,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 	if model.robject != nil {
 		return errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
 	}
-	// For the RiakModel field within the struct, set the Client and Bucket 
+	// For the riak.Model field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
 	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json", Options: options}
 	model.parent = dest
