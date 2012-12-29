@@ -4,7 +4,7 @@ riak (goriakpbc)
 Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb (github.com/mrb/riakpbc).
 It implements a connection to Riak using Protocol Buffers.
 
-A simple program using goriakpcb:
+A simple program using goriakpbc:
 
 ```go
 package main
@@ -37,6 +37,8 @@ func main() {
 Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
 To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
 
+### Documentation
+
 More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library.
 
 ### Secondary indexes (2i)
@@ -45,9 +47,9 @@ Secondary indexes are supported and can be queried for equality using IndexQuery
 
 ```go
 
-obj, _ := bucket.New("indexes")
+obj, _ := bucket.New("some_key")
 obj.ContentType = "text/plain"
-obj.Data = []byte("indexes to keep")
+obj.Data = []byte("testing indexes")
 obj.Indexes["test_int"] = strconv.Itoa(123)
 err := obj.Store()
 ...
