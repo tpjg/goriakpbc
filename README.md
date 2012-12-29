@@ -39,7 +39,7 @@ To install run `go get github.com/tpjg/goriakpbc` and use import as in the examp
 
 ### Documentation
 
-More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library.
+More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library. Full API documentation (automatically generated including protobuf definitions) is available at http://go.pkgdoc.org/github.com/tpjg/goriakpbc or through `go doc`.
 
 ### Secondary indexes (2i)
 
@@ -112,12 +112,7 @@ var dev Device
 err = client.Load("devices", "abcdefghijklm", &dev)
 dev.Description = "something else"
 err = dev.SaveAs("newkey")
-// or using the riak.Client "client": err = client.SaveAs("newkey", &dev) 
 ```
-
-### Full API documentation (including protobuf generated)
-
-`http://go.pkgdoc.org/github.com/tpjg/goriakpbc` or `go doc`
 
 ### Licensing
 
