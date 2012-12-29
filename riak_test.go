@@ -442,10 +442,10 @@ func TestMapReduce(t *testing.T) {
 }
 
 type DocumentModel struct {
-	FieldS    string
-	FieldF    float64
-	FieldB    bool
-	RiakModel Model
+	FieldS string
+	FieldF float64
+	FieldB bool
+	Model
 }
 
 func TestModel(t *testing.T) {
@@ -458,7 +458,7 @@ func TestModel(t *testing.T) {
 	err := client.New("testmodel.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
-	err = doc.RiakModel.Save()
+	err = doc.Save()
 	assert.T(t, err == nil)
 
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
@@ -488,10 +488,10 @@ func TestModel(t *testing.T) {
 }
 
 type DocumentModelWithLinks struct {
-	FieldS    string
-	ALink     One "tag_as_parent"
-	BLink     One // Will automatically use own name as a tag when linking
-	RiakModel Model
+	FieldS string
+	ALink  One "tag_as_parent"
+	BLink  One // Will automatically use own name as a tag when linking
+	Model
 }
 
 func TestModelWithLinks(t *testing.T) {
@@ -504,7 +504,7 @@ func TestModelWithLinks(t *testing.T) {
 	err := client.New("testmodel.go", "TestModelKey", &parent)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
-	err = parent.RiakModel.Save()
+	err = parent.Save()
 	assert.T(t, err == nil)
 
 	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
@@ -513,7 +513,7 @@ func TestModelWithLinks(t *testing.T) {
 	err = client.New("testmodellinks.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
-	err = doc.RiakModel.Save()
+	err = doc.Save()
 	assert.T(t, err == nil)
 
 	// Load it from Riak and check that the fields of the struct are set correctly, including the link to the parent
@@ -534,7 +534,7 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, parent.FieldS == parent2.FieldS)
 	assert.T(t, parent.FieldF == parent2.FieldF)
 	assert.T(t, parent.FieldB == parent2.FieldB)
-	assert.T(t, parent.RiakModel.Key() == parent2.RiakModel.Key())
+	assert.T(t, parent.Key() == parent2.Key())
 
 	// Cleanup
 	bucket, _ := client.Bucket("testmodel.go")
@@ -623,12 +623,12 @@ func TestModelWithManyLinks(t *testing.T) {
 	f1 := DocumentModel{FieldS: "friend1", FieldF: 1.0, FieldB: true}
 	err := client.New("testmodel.go", "f1", &f1)
 	assert.T(t, err == nil)
-	err = f1.RiakModel.Save()
+	err = f1.Save()
 	assert.T(t, err == nil)
 	f2 := DocumentModel{FieldS: "friend2", FieldF: 2.0, FieldB: true}
 	err = client.New("testmodel.go", "f2", &f2)
 	assert.T(t, err == nil)
-	err = f2.RiakModel.Save()
+	err = f2.Save()
 	assert.T(t, err == nil)
 
 	// Create a new "FriendLinks" to and save it
