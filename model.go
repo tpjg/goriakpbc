@@ -29,10 +29,10 @@ type Device struct {
 	Download_enabled bool    "download_enabled"
 	Ip               string  "ip"
 	Description      string  "description"
-	RiakModel        riak.Model
+    riak.Model
 }
 
-Note that it is required to have a "RiakModel" field that is a riak.Model
+Note that it is required to have a riak.Model field.
 Also if the field name in Ripple is equal the extra tag is not needed, (e.g.
 if the Ripple class above would have a "property :Ip, String").
 */
@@ -82,7 +82,7 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 	}
 }
 
-// Check if the passed destination is a pointer to a struct with RiakModel field
+// Check if the passed destination is a pointer to a struct with riak.Model field
 func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
@@ -110,7 +110,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 /*	
 	The Load function retrieves the data from Riak and stores it in the struct
 	that is passed as destination. It stores some necessary information in the
-	RiakModel field so it can be used later in other (Save) operations.
+	riak.Model field so it can be used later in other (Save) operations.
 
 	Unfortunately you also need to pass the bucketname as it is probably
 	different from the struct name.
@@ -190,7 +190,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 			}
 		}
 	}
-	// Set the values in the RiakModel field
+	// Set the values in the riak.Model field
 	model := &Model{robject: obj, parent: dest}
 	mv := reflect.ValueOf(model)
 	mv = mv.Elem()
@@ -202,7 +202,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 /*
 Create a new Document Model, passing in the bucketname and key. The key can be 
 empty in which case Riak will pick a key. The destination must be a pointer to
-a struct that has the RiakModel field.
+a struct that has the riak.Model field.
 */
 func (c *Client) New(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
 	// Check destination

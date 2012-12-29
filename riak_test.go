@@ -610,8 +610,8 @@ func TestRunConnectionPool(t *testing.T) {
 }
 
 type FriendLinks struct {
-	Friends   Many "friend"
-	RiakModel Model
+	Friends Many "friend"
+	Model
 }
 
 func TestModelWithManyLinks(t *testing.T) {
@@ -637,7 +637,7 @@ func TestModelWithManyLinks(t *testing.T) {
 	doc.Friends.Add(&f2)
 	err = client.New("testmodel.go", "TestMany", &doc)
 	assert.T(t, err == nil)
-	err = doc.RiakModel.Save()
+	err = doc.Save()
 
 	// Now load a new document and verify it has two links
 	var doc2 FriendLinks
