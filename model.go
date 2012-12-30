@@ -41,6 +41,14 @@ type Model struct {
 	parent  interface{} // Pointer to the parent struct (Device in example above)
 }
 
+type Resolver interface {
+	Resolve(int) error
+}
+
+func (*Model) Resolve(count int) (err error) {
+	return errors.New("Resolve not implemented")
+}
+
 // Link to one other model
 type One struct {
 	model  interface{}
@@ -107,44 +115,11 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 	return
 }
 
-/*	
-	The Load function retrieves the data from Riak and stores it in the struct
-	that is passed as destination. It stores some necessary information in the
-	riak.Model field so it can be used later in other (Save) operations.
-
-	Unfortunately you also need to pass the bucketname as it is probably
-	different from the struct name.
-
-	Using the "Device" struct as an example:
-
-	dev := &Device{}
-	err := client.Load("devices", "12345", dev)
+/*
+	mapData, maps the decoded JSON data onto the right struct fields, including
+	decoding of links.
 */
-func (c *Client) Load(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
-	// Check destination
-	dv, dt, rm, err := c.check_dest(dest)
-	if err != nil {
-		return err
-	}
-	// Fetch the object from Riak.
-	bucket, err := c.Bucket(bucketname)
-	if bucket == nil || err != nil {
-		err = fmt.Errorf("Can't get bucket for %v - %v", dt.Name(), err)
-		return
-	}
-	obj, err := bucket.Get(key, options...)
-	if err != nil {
-		return err
-	}
-	if obj == nil {
-		return errors.New("Object not found")
-	}
-	// Map the data onto the struct, first get it into a map
-	var data map[string]interface{}
-	err = json.Unmarshal(obj.Data, &data)
-	if err != nil {
-		return err
-	}
+func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]interface{}, links []Link) (err error) {
 	// Double check there is a "_field" type that is the same as the struct
 	// name, this is only a warning though.
 	if dt.Name() != data["_type"] {
@@ -170,7 +145,7 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 				tag = ft.Name
 			}
 			// Search in Links
-			for _, v := range obj.Links {
+			for _, v := range links {
 				if v.Tag == tag {
 					c.setOneLink(v, fv)
 				}
@@ -183,13 +158,115 @@ func (c *Client) Load(bucketname string, key string, dest interface{}, options .
 				tag = ft.Name
 			}
 			// Search in Links
-			for _, v := range obj.Links {
+			for _, v := range links {
 				if v.Tag == tag {
 					c.addOneLink(v, fv)
 				}
 			}
 		}
 	}
+	return
+}
+
+func (m *Model) GetSiblings(dest interface{}) (err error) {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	// Check if a slice is supplied
+	v := reflect.ValueOf(dest)
+	t := reflect.TypeOf(dest)
+	if v.Kind() != reflect.Slice {
+		return errors.New("Must supply a slice to GetSiblings")
+	}
+	// Check the length of the supplied slice against the number of non-empty siblings
+	count := 0
+	for _, s := range m.robject.Siblings {
+		if len(s.Data) != 0 {
+			count += 1
+		}
+	}
+	if v.Len() != count {
+		return errors.New("Length of slice does not match number of siblings")
+	}
+	count = 0
+	// Walk over the slice and map the data for each sibling
+	for _, sibling := range m.robject.Siblings {
+		if len(sibling.Data) != 0 {
+			// Map the data onto the struct, first get it into a map
+			var data map[string]interface{}
+			err = json.Unmarshal(sibling.Data, &data)
+			if err != nil {
+				return err
+			}
+			client.mapData(v.Index(count), t.Elem(), data, sibling.Links)
+			count += 1
+		}
+	}
+	return
+}
+
+/*	
+	The Load function retrieves the data from Riak and stores it in the struct
+	that is passed as destination. It stores some necessary information in the
+	riak.Model field so it can be used later in other (Save) operations.
+
+	Unfortunately you also need to pass the bucketname as it is probably
+	different from the struct name.
+
+	Using the "Device" struct as an example:
+
+	dev := &Device{}
+	err := client.Load("devices", "12345", dev)
+*/
+func (c *Client) Load(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
+	// Check destination
+	dv, dt, rm, err := c.check_dest(dest)
+	if err != nil {
+		return err
+	}
+	// Fetch the object from Riak.
+	bucket, err := c.Bucket(bucketname)
+	if bucket == nil || err != nil {
+		err = fmt.Errorf("Can't get bucket for %v - %v", dt.Name(), err)
+		return
+	}
+	obj, err := bucket.Get(key, options...)
+	if err != nil {
+		return err
+	}
+	if obj == nil {
+		return errors.New("Object not found")
+	}
+	if obj.Conflict() {
+		// Count number of non-empty siblings for which a conflict must be resolved
+		count := 0
+		for _, s := range obj.Siblings {
+			if len(s.Data) != 0 {
+				count += 1
+			}
+		}
+		// Set the RObject in the destination struct so it can be used for resolving the conflict
+		model := &Model{robject: obj, parent: dest}
+		mv := reflect.ValueOf(model)
+		mv = mv.Elem()
+		rm.Set(mv)
+		// Resolve the conflict and return the errorcode
+		return dest.Resolve(count)
+	}
+	// Map the data onto the struct, first get it into a map
+	var data map[string]interface{}
+	err = json.Unmarshal(obj.Data, &data)
+	if err != nil {
+		return err
+	}
+	// Double check there is a "_field" type that is the same as the struct
+	// name, this is only a warning though.
+	if dt.Name() != data["_type"] {
+		err = fmt.Errorf("Warning: struct name does not match _type in Riak")
+	}
+	err = c.mapData(dv, dt, data, obj.Links)
+
 	// Set the values in the riak.Model field
 	model := &Model{robject: obj, parent: dest}
 	mv := reflect.ValueOf(model)
@@ -339,18 +416,27 @@ func (c *Client) Save(dest interface{}) (err error) {
 	return c.SaveAs("±___unchanged___±", dest)
 }
 
-// Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
-func (m *Model) SaveAs(newKey string) (err error) {
+// Get the client from a given model
+func (m *Model) getClient() (c *Client, err error) {
 	if m.robject == nil {
-		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return nil, errors.New("Destination struct is not instantiated using riak.New or riak.Load")
 	}
 	if m.robject.Bucket == nil {
-		return errors.New("Destination struct has no bucket set, not instantiated correctly")
+		return nil, errors.New("Destination struct has no bucket set, not instantiated correctly")
 	}
 	if m.robject.Bucket.client == nil {
-		return errors.New("Destination struct has no client set, not instantiated correctly")
+		return nil, errors.New("Destination struct has no client set, not instantiated correctly")
 	}
-	return m.robject.Bucket.client.SaveAs(newKey, m.parent)
+	return m.robject.Bucket.client, nil
+}
+
+// Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
+func (m *Model) SaveAs(newKey string) (err error) {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	return client.SaveAs(newKey, m.parent)
 }
 
 // Save a Document Model to Riak
@@ -423,7 +509,7 @@ func (o *One) Set(dest interface{}) {
 	o.model = dest
 }
 
-func (o *One) Get(dest interface{}) (err error) {
+func (o *One) Get(dest Resolver) (err error) {
 	if o.client == nil {
 		return errors.New("riak.One link to other model not properly initialized")
 	}
