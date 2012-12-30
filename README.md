@@ -78,11 +78,9 @@ Map functions using Erlang instead of Javascript must be added using "MapErlang"
 
 ### Riak Document Models
 
-Document Models, commonly referred to as ORM (Object-Relational Mapping) in other database drivers, maps Go structs to an object in Riak and supports links between objects. Some simple usage examples are described below.
+Document Models, commonly referred to as ORM (Object-Relational Mapping) in other database drivers, maps Go structs to an object in Riak and supports links between objects. This is done by parsing the JSON data from an object in Riak and mapping it to a struct's fields.
 
-The package now contains support for "Document Models". This is implemented in to allow easy integration of a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/basho/ripple).
-
-This is done by parsing the JSON data and mapping it to a struct's fields. To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to possibly get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus snake_case). Also it stores the model/struct name as _type in Riak just like ripple does.
+The library allows for easy integration of a Go application into a project that also uses Ruby (on Rails) with the "ripple" gem (https://github.com/basho/ripple). To enable easy integration with Ruby/ripple projects the struct "tag" feature of Go is used to get around the naming convention differences between Go and Ruby (Uppercase starting letter required for export versus Uppercase being constants and typically CamelCase versus snake_case). Also it stores the model/struct name as _type in Riak just like ripple does.
 
 For example the following Ruby/Ripple class:
 ```ruby
