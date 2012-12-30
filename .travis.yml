@@ -1,0 +1,7 @@
+language: go
+services:
+	- riak
+install:
+  - go get github.com/bmizerany/assert
+  - go get code.google.com/p/goprotobuf/proto
+script: go test
