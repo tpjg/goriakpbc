@@ -126,6 +126,9 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, obj != nil)
 	assert.T(t, obj.Conflict() == true)
 	assert.T(t, len(obj.Siblings) == 2)
+	assert.T(t, len(obj.Siblings[0].Data) > 0)
+	assert.T(t, len(obj.Siblings[1].Data) > 0)
+	assert.T(t, string(obj.Siblings[0].Data) != string(obj.Siblings[1].Data))
 
 	// Cleanup
 	err = obj.Destroy()
@@ -695,4 +698,78 @@ func TestBrokenConnection(t *testing.T) {
 	err := obj.Store()
 	assert.T(t, err == nil)
 	assert.T(t, obj.Vclock != nil)
+}
+
+/*
+Example resolve function for DocumentModel. This selects the longest FieldS
+from the siblings, the largest FieldF and sets FieldB to true if any of the
+siblings have it set to true.
+*/
+func (d *DocumentModel) Resolve(count int) (err error) {
+	//fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
+	siblings := make([]DocumentModel, count, count)
+	err = d.GetSiblings(siblings)
+	if err != nil {
+		return err
+	}
+	//for i, s := range siblings {
+	//	fmt.Printf("DocumentModel %v - %v\n", i, s)
+	//}
+	d.FieldB = false
+	for _, s := range siblings {
+		if len(s.FieldS) > len(d.FieldS) {
+			d.FieldS = s.FieldS
+		}
+		if s.FieldF > d.FieldF {
+			d.FieldF = s.FieldF
+		}
+		if s.FieldB {
+			d.FieldB = true
+		}
+	}
+	return
+}
+
+func TestConflictingModel(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a bucket where siblings are allowed
+	bucket, err := client.Bucket("testconflict.go")
+	assert.T(t, err == nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+
+	// Delete earlier work ...
+	err = bucket.Delete("TestModelKey")
+	assert.T(t, err == nil)
+
+	// Create a new "DocumentModel" and save it
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err = client.New("testconflict.go", "TestModelKey", &doc)
+	assert.T(t, err == nil)
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Create the same again (with the same key)
+	doc2 := DocumentModel{FieldS: "longer_text", FieldF: 1.4, FieldB: false}
+	err = client.New("testconflict.go", "TestModelKey", &doc2)
+	assert.T(t, err == nil)
+	err = doc2.Save()
+	assert.T(t, err == nil)
+
+	// Now load it from Riak to test conflicts
+	doc3 := DocumentModel{}
+	err = client.Load("testconflict.go", "TestModelKey", &doc3)
+	t.Logf("Loading model - %v\n", err)
+	t.Logf("DocumentModel = %v\n", doc3)
+	assert.T(t, err == nil)
+	assert.T(t, doc3.FieldS == doc2.FieldS) // doc2 has longer FieldS
+	assert.T(t, doc3.FieldF == doc2.FieldF) // doc2 has larger FieldF
+	assert.T(t, doc3.FieldB == doc.FieldB)  // doc has FieldB set to true
+
+	// Cleanup
+	err = bucket.Delete("TestModelKey")
+	assert.T(t, err == nil)
 }
