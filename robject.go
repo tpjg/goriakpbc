@@ -108,6 +108,25 @@ func (obj *RObject) Store() (err error) {
 // Delete the object from Riak
 func (obj *RObject) Destroy() (err error) {
 	req := &RpbDelReq{Bucket: []byte(obj.Bucket.name), Key: []byte(obj.Key), Vclock: obj.Vclock}
+	for _, omap := range obj.Options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			case "rq":
+				req.Rw = &v
+			case "w":
+				req.W = &v
+			case "dw":
+				req.Dw = &v
+			case "pw":
+				req.Pw = &v
+			}
+		}
+	}
+
 	err, conn := obj.Bucket.client.request(req, "RpbDelReq")
 	if err != nil {
 		return err
@@ -220,6 +239,16 @@ func (obj *RObject) Reload() (err error) {
 		Bucket:     []byte(obj.Bucket.name),
 		Key:        []byte(obj.Key),
 		IfModified: obj.Vclock}
+	for _, omap := range obj.Options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			}
+		}
+	}
 	err, conn := obj.Bucket.client.request(req, "RpbGetReq")
 	if err != nil {
 		return err

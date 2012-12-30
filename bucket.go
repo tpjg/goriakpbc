@@ -51,8 +51,27 @@ func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 }
 
 // Delete a key/value from the bucket
-func (b *Bucket) Delete(key string) (err error) {
+func (b *Bucket) Delete(key string, options ...map[string]uint32) (err error) {
 	req := &RpbDelReq{Bucket: []byte(b.name), Key: []byte(key)}
+	for _, omap := range options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			case "rq":
+				req.Rw = &v
+			case "w":
+				req.W = &v
+			case "dw":
+				req.Dw = &v
+			case "pw":
+				req.Pw = &v
+			}
+		}
+	}
+
 	err, conn := b.client.request(req, "RpbDelReq")
 	if err != nil {
 		return err
@@ -74,13 +93,23 @@ func (b *Bucket) New(key string, options ...map[string]uint32) *RObject {
 }
 
 // Test if an object exists
-func (b *Bucket) Exists(key string) (exists bool, err error) {
+func (b *Bucket) Exists(key string, options ...map[string]uint32) (exists bool, err error) {
 	t := true
 	req := &RpbGetReq{
 		Bucket:     []byte(b.name),
 		Key:        []byte(key),
 		NotfoundOk: &t,
 		Head:       &t}
+	for _, omap := range options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			}
+		}
+	}
 
 	err, conn := b.client.request(req, "RpbGetReq")
 	if err != nil {
