@@ -3,6 +3,7 @@ package riak
 import (
 	"github.com/bmizerany/assert"
 	"testing"
+	"time"
 )
 
 type DocumentModel struct {
@@ -224,4 +225,32 @@ func TestConflictingModel(t *testing.T) {
 	// Cleanup
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
+}
+
+type DMTime struct {
+	FieldS string
+	FieldT time.Time
+	Model
+}
+
+func TestModelTime(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create and save
+	doc := DMTime{FieldS: "text", FieldT: time.Now()}
+	err := client.New("testmodel.go", "TestTime", &doc)
+	assert.T(t, err == nil)
+	//err = client.Save(&doc)
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
+	doc2 := DMTime{}
+	err = client.Load("testmodel.go", "TestTime", &doc2)
+	assert.T(t, err == nil)
+	assert.T(t, doc2.FieldS == doc.FieldS)
+	t.Logf("FieldT= %v ? %v\n", doc2.FieldT, doc.FieldT)
+	assert.T(t, doc2.FieldT.Equal(doc.FieldT))
 }

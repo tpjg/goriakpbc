@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 )
 
 /*
@@ -72,15 +73,32 @@ type One struct {
 type Many []One
 
 func setval(source reflect.Value, dest reflect.Value) {
+	// Handle special cases first
+	switch dest.Interface().(type) {
+	case time.Time:
+		if source.Kind() == reflect.String {
+			// Parse the source using format RFC3339
+			tmp, err := time.Parse(time.RFC3339, source.String())
+			if err == nil {
+				dest.Set(reflect.ValueOf(tmp))
+			}
+		}
+		return
+	}
+	// Handle standard types
 	switch dest.Kind() {
 	case reflect.Bool:
 		dest.SetBool(source.Bool())
+		return
 	case reflect.String:
 		dest.SetString(source.String())
+		return
 	case reflect.Float32, reflect.Float64:
 		dest.SetFloat(source.Float())
+		return
 	case reflect.Int:
 		dest.SetInt(source.Int())
+		return
 	}
 }
 
@@ -142,13 +160,13 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]inte
 		ft := dt.Field(i)
 		fv := dv.Field(i)
 		if data[ft.Name] != nil {
-			if ft.Type == reflect.TypeOf(data[ft.Name]) {
-				setval(reflect.ValueOf(data[ft.Name]), fv)
-			}
+			//if ft.Type == reflect.TypeOf(data[ft.Name]) {
+			setval(reflect.ValueOf(data[ft.Name]), fv)
+			//}
 		} else if data[string(ft.Tag)] != nil {
-			if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
-				setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
-			}
+			//if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
+			setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
+			//}
 		} else if ft.Type.Name() == "One" {
 			var tag string
 			if ft.Tag != "" {
@@ -409,6 +427,15 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 			data = append(data, js...)
 			data = append(data, ':')
 			js, _ = json.Marshal(fv.Interface())
+			data = append(data, js...)
+		}
+		switch t := fv.Interface().(type) {
+		case time.Time:
+			js, _ = json.Marshal(field)
+			data = append(data, ',')
+			data = append(data, js...)
+			data = append(data, ':')
+			js, _ = t.MarshalJSON()
 			data = append(data, js...)
 		}
 	}
