@@ -8,6 +8,26 @@ type Bucket struct {
 	allowMult bool
 }
 
+// Return a bucket
+func (c *Client) Bucket(name string) (*Bucket, error) {
+	req := &RpbGetBucketReq{
+		Bucket: []byte(name),
+	}
+	err, conn := c.request(req, "RpbGetBucketReq")
+
+	if err != nil {
+		return nil, err
+	}
+	resp := &RpbGetBucketResp{}
+	err = c.response(conn, resp)
+
+	if err != nil {
+		return nil, err
+	}
+	bucket := &Bucket{name: name, client: c, nval: *resp.Props.NVal, allowMult: *resp.Props.AllowMult}
+	return bucket, nil
+}
+
 // Return the nval property of a bucket
 func (b *Bucket) NVal() uint32 {
 	return b.nval
