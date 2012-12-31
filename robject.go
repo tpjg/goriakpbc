@@ -35,6 +35,11 @@ type RObject struct {
 	Options     []map[string]uint32
 }
 
+// Error definitions
+var (
+	NotFound = errors.New("Object not found")
+)
+
 // Store an RObject
 func (obj *RObject) Store() (err error) {
 	// Create base RpbPutReq
@@ -224,7 +229,7 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 	}
 	// If no Content is returned then the object was  not found
 	if len(resp.Content) == 0 {
-		return &RObject{}, errors.New("Object not found")
+		return &RObject{}, NotFound
 	}
 	// Create a new object and set the fields
 	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock, Options: options}

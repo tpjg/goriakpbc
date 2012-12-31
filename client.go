@@ -7,6 +7,7 @@ package riak
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"syscall"
@@ -46,6 +47,12 @@ var (
 	PW1 = map[string]uint32{"pw": 1}
 )
 
+// Error definitions
+var (
+	BadNumberOfConnections = errors.New("Connection count <= 0")
+	BadResponseLength      = errors.New("Response length too short")
+)
+
 // Returns a new Client connection
 func New(addr string) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
@@ -65,7 +72,7 @@ func (c *Client) Connect() (err error) {
 	c.tcpaddr = tcpaddr
 
 	if c.conn_count <= 0 {
-		return errors.New("Connection count <= 0")
+		return BadNumberOfConnections
 	} else if !c.connected {
 		// Create multiple connections to Riak and send these to the conns channel for later use
 		c.conns = make(chan *net.TCPConn, c.conn_count)
@@ -190,7 +197,7 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 
 	// Check the length
 	if len(msgbuf) < 5 {
-		return errors.New("Response length too short")
+		return BadResponseLength
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -228,7 +235,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 	}
 	// Check the length
 	if len(msgbuf) < 5 {
-		return nil, errors.New("Response length too short")
+		return nil, BadResponseLength
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -261,7 +268,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 			}
 			// Check the length
 			if len(msgbuf) < 5 {
-				return nil, errors.New("Response length too short")
+				return nil, BadResponseLength
 			}
 			// Read the message length, read the rest of the message if necessary
 			msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -286,7 +293,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 		if err == nil {
 			err = errors.New(string(errResp.Errmsg))
 		} else {
-			err = errors.New(string("Cannot deserialize error response from Riak"))
+			err = fmt.Errorf("Cannot deserialize error response from Riak - %v", err)
 		}
 		return nil, err
 	} else {
@@ -312,7 +319,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 		}
 		// Check the length
 		if len(msgbuf) < 5 {
-			return nil, errors.New("Response length too short")
+			return nil, BadResponseLength
 		}
 		// Read the message length, read the rest of the message if necessary
 		msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -342,7 +349,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 			if err == nil {
 				err = errors.New(string(errResp.Errmsg))
 			} else {
-				err = errors.New(string("Cannot deserialize error response from Riak"))
+				err = fmt.Errorf("Cannot deserialize error response from Riak - %v", err)
 			}
 			return nil, err
 		} else {
