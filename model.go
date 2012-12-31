@@ -39,11 +39,13 @@ if the Ripple class above would have a "property :Ip, String").
 */
 type Model struct {
 	robject *RObject
-	parent  interface{} // Pointer to the parent struct (Device in example above)
+	parent  Resolver // Pointer to the parent struct (Device in example above)
 }
 
 type Resolver interface {
 	Resolve(int) error
+	JSONToField(reflect.Value, reflect.Value) bool
+	FieldToJSON(interface{}) string
 }
 
 // Error definitions
@@ -62,6 +64,14 @@ func (*Model) Resolve(count int) (err error) {
 	return ResolveNotImplemented
 }
 
+func (*Model) JSONToField(source reflect.Value, dest reflect.Value) (isset bool) {
+	return
+}
+
+func (*Model) FieldToJSON(field interface{}) (result string) {
+	return
+}
+
 // Link to one other model
 type One struct {
 	model  interface{}
@@ -72,17 +82,42 @@ type One struct {
 // Link to many other models
 type Many []One
 
-func setval(source reflect.Value, dest reflect.Value) {
-	// Handle special cases first
+// Sets a Document Model's struct fields for non-standard types
+func internalJSONToField(source reflect.Value, dest reflect.Value, model Resolver) (isset bool) {
+	// See if the model has set this field
+	if model.JSONToField(source, dest) {
+		return true
+	}
+	// Implement some special field types that are supported
 	switch dest.Interface().(type) {
 	case time.Time:
-		if source.Kind() == reflect.String {
-			// Parse the source using format RFC3339
-			tmp, err := time.Parse(time.RFC3339, source.String())
-			if err == nil {
-				dest.Set(reflect.ValueOf(tmp))
-			}
+		if s, ok := source.Interface().(string); ok {
+			tmp, err := time.Parse(time.RFC3339, s)
+			dest.Set(reflect.ValueOf(tmp))
+			return err == nil
 		}
+	}
+	return
+}
+
+// Produces JSON for a Document Model's struct fields for non-standard types
+func internalFieldToJSON(field interface{}, model Resolver) (result string) {
+	// See if the model has converted to JSON
+	result = model.FieldToJSON(field)
+	if result != "" {
+		return
+	}
+	// Implement some special field types that are supported
+	switch f := field.(type) {
+	case time.Time:
+		result = `"` + f.Format(time.RFC3339Nano) + `"`
+	}
+	return
+}
+
+func setval(source reflect.Value, dest reflect.Value, model Resolver) {
+	// Handle special cases first - check if a special conversion succeeded
+	if internalJSONToField(source, dest, model) {
 		return
 	}
 	// Handle standard types
@@ -149,7 +184,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 	mapData, maps the decoded JSON data onto the right struct fields, including
 	decoding of links.
 */
-func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]interface{}, links []Link) (err error) {
+func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]interface{}, links []Link, model Resolver) (err error) {
 	// Double check there is a "_field" type that is the same as the struct
 	// name, this is only a warning though.
 	if dt.Name() != data["_type"] {
@@ -160,13 +195,9 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]inte
 		ft := dt.Field(i)
 		fv := dv.Field(i)
 		if data[ft.Name] != nil {
-			//if ft.Type == reflect.TypeOf(data[ft.Name]) {
-			setval(reflect.ValueOf(data[ft.Name]), fv)
-			//}
+			setval(reflect.ValueOf(data[ft.Name]), fv, model)
 		} else if data[string(ft.Tag)] != nil {
-			//if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
-			setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
-			//}
+			setval(reflect.ValueOf(data[string(ft.Tag)]), fv, model)
 		} else if ft.Type.Name() == "One" {
 			var tag string
 			if ft.Tag != "" {
@@ -229,7 +260,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 			if err != nil {
 				return err
 			}
-			client.mapData(v.Index(count), t.Elem(), data, sibling.Links)
+			client.mapData(v.Index(count), t.Elem(), data, sibling.Links, m.parent)
 			count += 1
 		}
 	}
@@ -295,7 +326,7 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 	if dt.Name() != data["_type"] {
 		err = ModelDoesNotMatch
 	}
-	err = c.mapData(dv, dt, data, obj.Links)
+	err = c.mapData(dv, dt, data, obj.Links, dest)
 
 	// Set the values in the riak.Model field
 	model := &Model{robject: obj, parent: dest}
@@ -311,7 +342,7 @@ Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the riak.Model field.
 */
-func (c *Client) New(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
+func (c *Client) New(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
 	_, dt, rm, err := c.check_dest(dest)
 	if err != nil {
@@ -363,7 +394,7 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 }
 
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
-func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
+func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	// Check destination
 	dv, dt, rm, err := c.check_dest(dest)
 	if err != nil {
@@ -420,23 +451,25 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 				}
 			}
 		}
-		switch ft.Type.Kind() {
-		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
+		// Add this field to the output JSON, first the special cases
+		fjs := internalFieldToJSON(fv.Interface(), dest)
+		if fjs != "" {
 			js, _ = json.Marshal(field)
 			data = append(data, ',')
 			data = append(data, js...)
 			data = append(data, ':')
-			js, _ = json.Marshal(fv.Interface())
-			data = append(data, js...)
-		}
-		switch t := fv.Interface().(type) {
-		case time.Time:
-			js, _ = json.Marshal(field)
-			data = append(data, ',')
-			data = append(data, js...)
-			data = append(data, ':')
-			js, _ = t.MarshalJSON()
-			data = append(data, js...)
+			data = append(data, []byte(fjs)...)
+		} else {
+			// No special case, handle the standard types
+			switch ft.Type.Kind() {
+			case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
+				js, _ = json.Marshal(field)
+				data = append(data, ',')
+				data = append(data, js...)
+				data = append(data, ':')
+				js, _ = json.Marshal(fv.Interface())
+				data = append(data, js...)
+			}
 		}
 	}
 	data = append(data, '}')
@@ -451,7 +484,7 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 }
 
 // Save a Document Model to Riak
-func (c *Client) Save(dest interface{}) (err error) {
+func (c *Client) Save(dest Resolver) (err error) {
 	return c.SaveAs("±___unchanged___±", dest)
 }
 
