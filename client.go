@@ -7,8 +7,8 @@ package riak
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
+	"io"
 	"net"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -24,10 +24,9 @@ protoc --go_out=. riak.proto
 
 // riak.Client the client interface
 type Client struct {
-	mu           sync.Mutex
 	connected    bool
-	conn         *net.TCPConn
 	addr         string
+	tcpaddr      *net.TCPAddr
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	conn_count   int
@@ -59,26 +58,19 @@ func NewPool(addr string, count int) *Client {
 
 // Connects to a Riak server.
 func (c *Client) Connect() (err error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	tcpaddr, err := net.ResolveTCPAddr("tcp", c.addr)
 	if err != nil {
 		return err
 	}
+	c.tcpaddr = tcpaddr
 
 	if c.conn_count <= 0 {
 		return errors.New("Connection count <= 0")
-	} else if c.conn_count == 1 {
-		c.conn, err = net.DialTCP("tcp", nil, tcpaddr)
-		if err != nil {
-			return err
-		}
-	} else {
+	} else if !c.connected {
 		// Create multiple connections to Riak and send these to the conns channel for later use
 		c.conns = make(chan *net.TCPConn, c.conn_count)
 		for i := 0; i < c.conn_count; i++ {
-			newconn, err := net.DialTCP("tcp", nil, tcpaddr)
+			newconn, err := net.DialTCP("tcp", nil, c.tcpaddr)
 			if err != nil {
 				return err
 			}
@@ -95,14 +87,10 @@ func (c *Client) Close() {
 		return
 	}
 
-	if c.conn_count == 1 {
-		c.conn.Close()
-	} else {
-		// Close all the connections
-		for i := 0; i < c.conn_count; i++ {
-			conn := <-c.conns
-			conn.Close()
-		}
+	// Close all the connections
+	for i := 0; i < c.conn_count; i++ {
+		conn := <-c.conns
+		conn.Close()
 	}
 	c.connected = false
 }
@@ -138,25 +126,14 @@ func (c *Client) getConn() (err error, conn *net.TCPConn) {
 			return err, nil
 		}
 	}
-	// Select a connection to use 
-	if c.conn_count == 1 {
-		conn = c.conn
-		c.mu.Lock() // Lock until the response is read
-	} else {
-		conn = <-c.conns
-	}
+	conn = <-c.conns
 	return err, conn
 }
 
 // Releases the TCP connection for use by subsequent requests
 func (c *Client) releaseConn(conn *net.TCPConn) {
-	if c.conn_count == 1 {
-		// Unlock the Mutex so the single shared connection can be re-used
-		c.mu.Unlock()
-	} else {
-		// Return this connection down the channel for re-use
-		c.conns <- conn
-	}
+	// Return this connection down the channel for re-use
+	c.conns <- conn
 }
 
 // Request serializes the data (using protobuf), adds the header and sends it to Riak.
@@ -198,12 +175,19 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 
 // Reponse deserializes the data and returns a struct.
 func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error) {
-	defer c.releaseConn(conn)
 	// Read the response from Riak
 	msgbuf, err := c.read(conn, 5)
 	if err != nil {
+		if err == io.EOF {
+			// Connection was closed, try to re-open the connection so subsequent
+			// i/o can succeed. Does report the error for this response.
+			conn, _ = net.DialTCP("tcp", nil, c.tcpaddr)
+		}
+		c.releaseConn(conn)
 		return err
 	}
+	defer c.releaseConn(conn)
+
 	// Check the length
 	if len(msgbuf) < 5 {
 		return errors.New("Response length too short")

@@ -529,9 +529,12 @@ func TestBrokenConnection(t *testing.T) {
 		failing with a broken pipe message.
 	*/
 	t.Logf("Testing a broken connection to Riak ...")
+	cerr, conn := client.getConn()
+	assert.T(t, cerr == nil)
 	msg := []byte{250, 0, 0, 1, 250, 250}
-	c, cerr := client.conn.Write(msg)
-	t.Logf("%v bytes written - err=%v\n", c, cerr)
+	n, cerr := conn.Write(msg)
+	t.Logf("%v bytes written - err=%v\n", n, cerr)
+	client.releaseConn(conn)
 
 	bucket, cerr := client.Bucket("client_test.go")
 	t.Logf("1: %v\n", cerr)
@@ -540,9 +543,6 @@ func TestBrokenConnection(t *testing.T) {
 	bucket, cerr = client.Bucket("client_test.go")
 	t.Logf("3: %v\n", cerr)
 	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("4: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("5: %v\n", cerr)
 	assert.T(t, bucket != nil)
 	obj := bucket.New("abcdefghijk", PW1, DW1)
 	assert.T(t, obj != nil)
