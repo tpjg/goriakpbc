@@ -1,7 +1,6 @@
 package riak
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -38,15 +37,27 @@ if the Ripple class above would have a "property :Ip, String").
 */
 type Model struct {
 	robject *RObject
-	parent  interface{} // Pointer to the parent struct (Device in example above)
+	parent  Resolver // Pointer to the parent struct (Device in example above)
 }
 
 type Resolver interface {
 	Resolve(int) error
 }
 
+// Error definitions
+var (
+	ResolveNotImplemented     = errors.New("Resolve not implemented")
+	DestinationError          = errors.New("Destination is not a pointer (to a struct)")
+	DestinationIsNotModel     = errors.New("Destination has no riak.Model field")
+	DestinationIsNotSlice     = errors.New("Must supply a slice to GetSiblings")
+	DestinationLengthError    = errors.New("Length of slice does not match number of siblings")
+	DestinationNotInitialized = errors.New("Destination struct is not initialized (correctly) using riak.New or riak.Load")
+	ModelDoesNotMatch         = errors.New("Warning: struct name does not match _type in Riak")
+	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
+)
+
 func (*Model) Resolve(count int) (err error) {
-	return errors.New("Resolve not implemented")
+	return ResolveNotImplemented
 }
 
 // Link to one other model
@@ -81,14 +92,14 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
-		err = errors.New("Destination is not a pointer (to a struct)")
+		err = DestinationError
 		return
 	}
 	dv = dv.Elem()
 	dt = reflect.TypeOf(dest)
 	dt = dt.Elem()
 	if dt.Kind() != reflect.Struct {
-		err = errors.New("Destination is not a (pointer to a) struct")
+		err = DestinationError
 		return
 	}
 	for i := 0; i < dt.NumField(); i++ {
@@ -98,7 +109,7 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 			return
 		}
 	}
-	err = errors.New("Destination has no riak.Model field")
+	err = DestinationIsNotModel
 	return
 }
 
@@ -128,28 +139,28 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links [
 		ft := dt.Field(i)
 		fv := dv.Field(i)
 		if ft.Type == reflect.TypeOf(One{}) {
-			var tag string
+			var name string
 			if ft.Tag != "" {
-				tag = string(ft.Tag)
+				name = string(ft.Tag)
 			} else {
-				tag = ft.Name
+				name = ft.Name
 			}
 			// Search in Links
 			for _, v := range links {
-				if v.Tag == tag {
+				if v.Tag == name {
 					c.setOneLink(v, fv)
 				}
 			}
 		} else if ft.Type == reflect.TypeOf(Many{}) {
-			var tag string
+			var name string
 			if ft.Tag != "" {
-				tag = string(ft.Tag)
+				name = string(ft.Tag)
 			} else {
-				tag = ft.Name
+				name = ft.Name
 			}
 			// Search in Links
 			for _, v := range links {
-				if v.Tag == tag {
+				if v.Tag == name {
 					c.addOneLink(v, fv)
 				}
 			}
@@ -167,7 +178,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	v := reflect.ValueOf(dest)
 	t := reflect.TypeOf(dest)
 	if v.Kind() != reflect.Slice {
-		return errors.New("Must supply a slice to GetSiblings")
+		return DestinationIsNotSlice
 	}
 	// Check the length of the supplied slice against the number of non-empty siblings
 	count := 0
@@ -177,7 +188,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 		}
 	}
 	if v.Len() != count {
-		return errors.New("Length of slice does not match number of siblings")
+		return DestinationLengthError
 	}
 	count = 0
 	// Walk over the slice and map the data for each sibling
@@ -221,7 +232,7 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 		return err
 	}
 	if obj == nil {
-		return errors.New("Object not found")
+		return NotFound
 	}
 	if obj.Conflict() {
 		// Count number of non-empty siblings for which a conflict must be resolved
@@ -256,7 +267,7 @@ Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the riak.Model field.
 */
-func (c *Client) New(bucketname string, key string, dest interface{}, options ...map[string]uint32) (err error) {
+func (c *Client) New(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
 	_, dt, rm, err := c.check_dest(dest)
 	if err != nil {
@@ -276,7 +287,7 @@ func (c *Client) New(bucketname string, key string, dest interface{}, options ..
 	mv = mv.Elem()
 	mv.Set(rm)
 	if model.robject != nil {
-		return errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
+		return ModelNotNew
 	}
 	// For the riak.Model field within the struct, set the Client and Bucket 
 	// and fields and set the RObject field to nil.
@@ -301,14 +312,14 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		return errors.New("Error in linkToModel - destination struct is not instantiated using riak.New or riak.Load")
+		return DestinationNotInitialized
 	}
 	obj.LinkTo(model.robject, tag)
 	return nil
 }
 
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
-func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
+func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	// Check destination
 	dv, dt, rm, err := c.check_dest(dest)
 	if err != nil {
@@ -321,12 +332,12 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return DestinationNotInitialized
 	}
 	// Start with the _type
 	data := []byte(fmt.Sprintf(`{"_type":"%v",`, dt.Name()))
 	// Now JSON encode the entire struct
-	js, err := json.Marshal(dest)
+	js, err := Marshal(dest)
 	if err != nil {
 		return err
 	}
@@ -374,20 +385,20 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 }
 
 // Save a Document Model to Riak
-func (c *Client) Save(dest interface{}) (err error) {
+func (c *Client) Save(dest Resolver) (err error) {
 	return c.SaveAs("±___unchanged___±", dest)
 }
 
 // Get the client from a given model
 func (m *Model) getClient() (c *Client, err error) {
 	if m.robject == nil {
-		return nil, errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return nil, DestinationNotInitialized
 	}
 	if m.robject.Bucket == nil {
-		return nil, errors.New("Destination struct has no bucket set, not instantiated correctly")
+		return nil, DestinationNotInitialized
 	}
 	if m.robject.Bucket.client == nil {
-		return nil, errors.New("Destination struct has no client set, not instantiated correctly")
+		return nil, DestinationNotInitialized
 	}
 	return m.robject.Bucket.client, nil
 }
@@ -448,7 +459,7 @@ func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return DestinationNotInitialized
 	}
 	model.robject.Key = newKey
 	return
@@ -457,7 +468,7 @@ func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 // Set the Key value, note that this does not save the model, it only changes the data structure
 func (m Model) SetKey(newKey string) (err error) {
 	if m.robject == nil {
-		return errors.New("Destination struct is not instantiated using riak.New or riak.Load")
+		return DestinationNotInitialized
 	}
 	m.robject.Key = newKey
 	return
@@ -473,7 +484,7 @@ func (o *One) Set(dest interface{}) {
 
 func (o *One) Get(dest Resolver) (err error) {
 	if o.client == nil {
-		return errors.New("riak.One link to other model not properly initialized")
+		return DestinationNotInitialized
 	}
 	return o.client.Load(o.link.Bucket, o.link.Key, dest)
 }

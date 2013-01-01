@@ -7,8 +7,9 @@ package riak
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
+	"fmt"
+	"io"
 	"net"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -24,10 +25,9 @@ protoc --go_out=. riak.proto
 
 // riak.Client the client interface
 type Client struct {
-	mu           sync.Mutex
 	connected    bool
-	conn         *net.TCPConn
 	addr         string
+	tcpaddr      *net.TCPAddr
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	conn_count   int
@@ -47,6 +47,12 @@ var (
 	PW1 = map[string]uint32{"pw": 1}
 )
 
+// Error definitions
+var (
+	BadNumberOfConnections = errors.New("Connection count <= 0")
+	BadResponseLength      = errors.New("Response length too short")
+)
+
 // Returns a new Client connection
 func New(addr string) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
@@ -59,26 +65,19 @@ func NewPool(addr string, count int) *Client {
 
 // Connects to a Riak server.
 func (c *Client) Connect() (err error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	tcpaddr, err := net.ResolveTCPAddr("tcp", c.addr)
 	if err != nil {
 		return err
 	}
+	c.tcpaddr = tcpaddr
 
 	if c.conn_count <= 0 {
-		return errors.New("Connection count <= 0")
-	} else if c.conn_count == 1 {
-		c.conn, err = net.DialTCP("tcp", nil, tcpaddr)
-		if err != nil {
-			return err
-		}
-	} else {
+		return BadNumberOfConnections
+	} else if !c.connected {
 		// Create multiple connections to Riak and send these to the conns channel for later use
 		c.conns = make(chan *net.TCPConn, c.conn_count)
 		for i := 0; i < c.conn_count; i++ {
-			newconn, err := net.DialTCP("tcp", nil, tcpaddr)
+			newconn, err := net.DialTCP("tcp", nil, c.tcpaddr)
 			if err != nil {
 				return err
 			}
@@ -95,14 +94,10 @@ func (c *Client) Close() {
 		return
 	}
 
-	if c.conn_count == 1 {
-		c.conn.Close()
-	} else {
-		// Close all the connections
-		for i := 0; i < c.conn_count; i++ {
-			conn := <-c.conns
-			conn.Close()
-		}
+	// Close all the connections
+	for i := 0; i < c.conn_count; i++ {
+		conn := <-c.conns
+		conn.Close()
 	}
 	c.connected = false
 }
@@ -138,25 +133,14 @@ func (c *Client) getConn() (err error, conn *net.TCPConn) {
 			return err, nil
 		}
 	}
-	// Select a connection to use 
-	if c.conn_count == 1 {
-		conn = c.conn
-		c.mu.Lock() // Lock until the response is read
-	} else {
-		conn = <-c.conns
-	}
+	conn = <-c.conns
 	return err, conn
 }
 
 // Releases the TCP connection for use by subsequent requests
 func (c *Client) releaseConn(conn *net.TCPConn) {
-	if c.conn_count == 1 {
-		// Unlock the Mutex so the single shared connection can be re-used
-		c.mu.Unlock()
-	} else {
-		// Return this connection down the channel for re-use
-		c.conns <- conn
-	}
+	// Return this connection down the channel for re-use
+	c.conns <- conn
 }
 
 // Request serializes the data (using protobuf), adds the header and sends it to Riak.
@@ -198,15 +182,22 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 
 // Reponse deserializes the data and returns a struct.
 func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error) {
-	defer c.releaseConn(conn)
 	// Read the response from Riak
 	msgbuf, err := c.read(conn, 5)
 	if err != nil {
+		if err == io.EOF {
+			// Connection was closed, try to re-open the connection so subsequent
+			// i/o can succeed. Does report the error for this response.
+			conn, _ = net.DialTCP("tcp", nil, c.tcpaddr)
+		}
+		c.releaseConn(conn)
 		return err
 	}
+	defer c.releaseConn(conn)
+
 	// Check the length
 	if len(msgbuf) < 5 {
-		return errors.New("Response length too short")
+		return BadResponseLength
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -244,7 +235,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 	}
 	// Check the length
 	if len(msgbuf) < 5 {
-		return nil, errors.New("Response length too short")
+		return nil, BadResponseLength
 	}
 	// Read the message length, read the rest of the message if necessary
 	msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -277,7 +268,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 			}
 			// Check the length
 			if len(msgbuf) < 5 {
-				return nil, errors.New("Response length too short")
+				return nil, BadResponseLength
 			}
 			// Read the message length, read the rest of the message if necessary
 			msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -302,7 +293,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 		if err == nil {
 			err = errors.New(string(errResp.Errmsg))
 		} else {
-			err = errors.New(string("Cannot deserialize error response from Riak"))
+			err = fmt.Errorf("Cannot deserialize error response from Riak - %v", err)
 		}
 		return nil, err
 	} else {
@@ -328,7 +319,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 		}
 		// Check the length
 		if len(msgbuf) < 5 {
-			return nil, errors.New("Response length too short")
+			return nil, BadResponseLength
 		}
 		// Read the message length, read the rest of the message if necessary
 		msglen := int(msgbuf[0])<<24 + int(msgbuf[1])<<16 + int(msgbuf[2])<<8 + int(msgbuf[3])
@@ -358,7 +349,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 			if err == nil {
 				err = errors.New(string(errResp.Errmsg))
 			} else {
-				err = errors.New(string("Cannot deserialize error response from Riak"))
+				err = fmt.Errorf("Cannot deserialize error response from Riak - %v", err)
 			}
 			return nil, err
 		} else {
@@ -427,24 +418,4 @@ func (c *Client) ServerVersion() (node string, version string, err error) {
 		version = string(resp.ServerVersion)
 	}
 	return node, version, err
-}
-
-// Return a bucket
-func (c *Client) Bucket(name string) (*Bucket, error) {
-	req := &RpbGetBucketReq{
-		Bucket: []byte(name),
-	}
-	err, conn := c.request(req, "RpbGetBucketReq")
-
-	if err != nil {
-		return nil, err
-	}
-	resp := &RpbGetBucketResp{}
-	err = c.response(conn, resp)
-
-	if err != nil {
-		return nil, err
-	}
-	bucket := &Bucket{name: name, client: c, nval: *resp.Props.NVal, allowMult: *resp.Props.AllowMult}
-	return bucket, nil
 }

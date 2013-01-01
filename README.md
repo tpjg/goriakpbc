@@ -35,7 +35,7 @@ func main() {
 ```
 
 Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
-To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above.
+To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above. If the Document Models (ORM) features are not needed simply run `rm $GOPATH/src/github.com/tpjg/goriakpbc/*model*.go` after `go get`.
 
 ### Documentation
 
