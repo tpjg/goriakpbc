@@ -59,19 +59,6 @@ type One struct {
 // Link to many other models
 type Many []One
 
-func setval(source reflect.Value, dest reflect.Value) {
-	switch dest.Kind() {
-	case reflect.Bool:
-		dest.SetBool(source.Bool())
-	case reflect.String:
-		dest.SetString(source.String())
-	case reflect.Float32, reflect.Float64:
-		dest.SetFloat(source.Float())
-	case reflect.Int:
-		dest.SetInt(source.Int())
-	}
-}
-
 func (c *Client) setOneLink(source Link, dest reflect.Value) {
 	if dest.Kind() == reflect.Struct && dest.Type() == reflect.TypeOf(One{}) {
 		one := One{link: source, client: c}
@@ -129,15 +116,7 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]inte
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
-		if data[ft.Name] != nil {
-			if ft.Type == reflect.TypeOf(data[ft.Name]) {
-				setval(reflect.ValueOf(data[ft.Name]), fv)
-			}
-		} else if data[string(ft.Tag)] != nil {
-			if ft.Type == reflect.TypeOf(data[string(ft.Tag)]) {
-				setval(reflect.ValueOf(data[string(ft.Tag)]), fv)
-			}
-		} else if ft.Type.Name() == "One" {
+		if ft.Type.Name() == "One" {
 			var tag string
 			if ft.Tag != "" {
 				tag = string(ft.Tag)
@@ -165,6 +144,7 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]inte
 			}
 		}
 	}
+	// TODO: use customized json decoder
 	return
 }
 
@@ -390,16 +370,8 @@ func (c *Client) SaveAs(newKey string, dest interface{}) (err error) {
 				}
 			}
 		}
-		switch ft.Type.Kind() {
-		case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
-			js, _ = json.Marshal(field)
-			data = append(data, ',')
-			data = append(data, js...)
-			data = append(data, ':')
-			js, _ = json.Marshal(fv.Interface())
-			data = append(data, js...)
-		}
 	}
+	// TODO: use customized JSON encoder
 	data = append(data, '}')
 	model.robject.Data = data
 	if newKey != "±___unchanged___±" {
