@@ -7,7 +7,9 @@
 //
 // See "JSON and Go" for an introduction to this package:
 // http://golang.org/doc/articles/json_and_go.html
-package json
+
+// This file is a minor customization of the original encoding/json package for use in goriakpbc
+package riak
 
 import (
 	"bytes"
@@ -47,42 +49,19 @@ import (
 // []byte encodes as a base64-encoded string, and a nil slice
 // encodes as the null JSON object.
 //
+// Struct values encode different from the normal encoding/json package!
+// --------------------------------------------------------------------------
 // Struct values encode as JSON objects. Each exported struct field
 // becomes a member of the object unless
-//   - the field's tag is "-", or
-//   - the field is empty and its tag specifies the "omitempty" option.
-// The empty values are false, 0, any
-// nil pointer or interface value, and any array, slice, map, or string of
-// length zero. The object's default key string is the struct field name
-// but can be specified in the struct field's tag value. The "json" key in
-// the struct field's tag value is the key name, followed by an optional comma
-// and options. Examples:
+//   - the field's tag is a riak.Many, riak.One or riak.Model
 //
-//   // Field is ignored by this package.
-//   Field int `json:"-"`
-//
-//   // Field appears in JSON as key "myName".
-//   Field int `json:"myName"`
-//
-//   // Field appears in JSON as key "myName" and
-//   // the field is omitted from the object if its value is empty,
-//   // as defined above.
-//   Field int `json:"myName,omitempty"`
-//
-//   // Field appears in JSON as key "Field" (the default), but
-//   // the field is skipped if empty.
-//   // Note the leading comma.
-//   Field int `json:",omitempty"`
-//
-// The "string" option signals that a field is stored as JSON inside a
-// JSON-encoded string.  This extra level of encoding is sometimes
-// used when communicating with JavaScript programs:
-//
-//    Int64String int64 `json:",string"`
+// The object's default key string is the struct field name but can be 
+// specified in the struct field's tag value. 
 //
 // The key name will be used if it's a non-empty string consisting of
 // only Unicode letters, digits, dollar signs, percent signs, hyphens,
 // underscores and slashes.
+// --------------------------------------------------------------------------
 //
 // Map values encode as JSON objects.
 // The map's key type must be string; the object keys are used directly
@@ -533,21 +512,32 @@ func encodeFields(t reflect.Type) []encodeField {
 			// so for now pretend they don't exist.
 			continue
 		}
+		// Some special exceptions for riak - skip these fields!
+		if f.Type == reflect.TypeOf(Model{}) {
+			continue
+		}
+		if f.Type == reflect.TypeOf(One{}) {
+			continue
+		}
+		if f.Type == reflect.TypeOf(Many{}) {
+			continue
+		}
 		var ef encodeField
 		ef.i = i
 		ef.tag = f.Name
 
-		tv := f.Tag.Get("json")
+		// Handling of Tag is different for riak, not looking for a "json:"
+		// key/value string, using the Tag as a name directly (ef.tag)
+		tv := string(f.Tag)
 		if tv != "" {
 			if tv == "-" {
 				continue
 			}
-			name, opts := parseTag(tv)
-			if isValidTag(name) {
-				ef.tag = name
+			if isValidTag(tv) {
+				ef.tag = tv
 			}
-			ef.omitEmpty = opts.Contains("omitempty")
-			ef.quoted = opts.Contains("string")
+			ef.omitEmpty = false
+			ef.quoted = false
 		}
 		fs = append(fs, ef)
 	}

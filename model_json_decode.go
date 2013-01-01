@@ -5,7 +5,8 @@
 // Represents JSON data structure using native Go types: booleans, floats,
 // strings, arrays, and maps.
 
-package json
+// This file is a minor customization of the original encoding/json package for use in goriakpbc
+package riak
 
 import (
 	"encoding/base64"
@@ -496,7 +497,9 @@ func (d *decodeState) object(v reflect.Value) {
 			st := sv.Type()
 			for i := 0; i < sv.NumField(); i++ {
 				sf := st.Field(i)
-				tag := sf.Tag.Get("json")
+				// Handling of Tag is different for riak, not looking for a "json:"
+				// key/value string, using the Tag as a name directly (ef.tag)
+				tag := string(sf.Tag)
 				if tag == "-" {
 					// Pretend this field doesn't exist.
 					continue
@@ -507,9 +510,8 @@ func (d *decodeState) object(v reflect.Value) {
 					// these in a later version.
 					continue
 				}
-				// First, tag match
-				tagName, _ := parseTag(tag)
-				if tagName == key {
+				// First, tag match - use tag directly for riak
+				if tag == key {
 					f = sf
 					ok = true
 					break // no better match possible
@@ -534,8 +536,7 @@ func (d *decodeState) object(v reflect.Value) {
 				} else {
 					subv = sv.FieldByIndex(f.Index)
 				}
-				_, opts := parseTag(f.Tag.Get("json"))
-				destring = opts.Contains("string")
+				destring = false // riak
 			}
 		}
 

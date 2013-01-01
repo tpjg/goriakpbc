@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package json
+// This file is a minor customization of the original encoding/json package for use in goriakpbc
+package riak
 
 import (
 	"errors"
