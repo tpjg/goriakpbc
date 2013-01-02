@@ -162,7 +162,7 @@ siblings have it set to true.
 */
 func (d *DocumentModel) Resolve(count int) (err error) {
 	fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
-	siblings := make([]DocumentModel, count, count)
+	siblings := make([]DocumentModel, count)
 	err = d.GetSiblings(siblings)
 	if err != nil {
 		return err

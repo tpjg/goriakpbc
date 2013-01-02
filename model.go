@@ -54,6 +54,7 @@ var (
 	DestinationNotInitialized = errors.New("Destination struct is not initialized (correctly) using riak.New or riak.Load")
 	ModelDoesNotMatch         = errors.New("Warning: struct name does not match _type in Riak")
 	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
+	NoSiblingData             = errors.New("No non-empty sibling data")
 )
 
 func (*Model) Resolve(count int) (err error) {
@@ -189,8 +190,15 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 			count += 1
 		}
 	}
+	if count == 0 {
+		return NoSiblingData
+	}
 	if v.Len() != count {
 		return DestinationLengthError
+	}
+	// Check the type of the slice elements
+	if reflect.TypeOf(v.Index(0).Interface()) != reflect.TypeOf(m.parent).Elem() {
+		return fmt.Errorf("Slice elements incorrect, must be %v", reflect.TypeOf(m.parent).Elem())
 	}
 	count = 0
 	// Walk over the slice and map the data for each sibling
