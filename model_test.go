@@ -1,14 +1,15 @@
 package riak
 
 import (
+	"fmt"
 	"github.com/bmizerany/assert"
 	"testing"
 	"time"
 )
 
 type DocumentModel struct {
-	FieldS string
-	FieldF float64
+	FieldS string  "string_field"
+	FieldF float64 "float_field"
 	FieldB bool
 	Model
 }
@@ -22,9 +23,10 @@ func TestModel(t *testing.T) {
 	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
 	err := client.New("testmodel.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
-	//err = client.Save(&doc)
 	err = doc.Save()
 	assert.T(t, err == nil)
+	// Check that the JSON is correct
+	assert.T(t, `{"_type":"DocumentModel","string_field":"text","float_field":1.2,"FieldB":true}` == string(doc.robject.Data))
 
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
 	doc2 := DocumentModel{}
@@ -159,15 +161,15 @@ from the siblings, the largest FieldF and sets FieldB to true if any of the
 siblings have it set to true.
 */
 func (d *DocumentModel) Resolve(count int) (err error) {
-	//fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
+	fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
 	siblings := make([]DocumentModel, count, count)
-	err = d.GetSiblings(siblings)
+	err = d.GetSiblings(&siblings)
 	if err != nil {
 		return err
 	}
-	//for i, s := range siblings {
-	//	fmt.Printf("DocumentModel %v - %v\n", i, s)
-	//}
+	for i, s := range siblings {
+		fmt.Printf("DocumentModel %v - %v\n", i, s)
+	}
 	d.FieldB = false
 	for _, s := range siblings {
 		if len(s.FieldS) > len(d.FieldS) {

@@ -176,7 +176,11 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	}
 	// Check if a slice is supplied
 	v := reflect.ValueOf(dest)
-	t := reflect.TypeOf(dest)
+	if v.Kind() != reflect.Ptr || v.IsNil() {
+		err = DestinationError
+		return
+	}
+	v = v.Elem()
 	if v.Kind() != reflect.Slice {
 		return DestinationIsNotSlice
 	}
@@ -194,8 +198,10 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	// Walk over the slice and map the data for each sibling
 	for _, sibling := range m.robject.Siblings {
 		if len(sibling.Data) != 0 {
-			// Map the data onto the struct
-			client.mapData(v.Index(count), t.Elem(), sibling.Data, sibling.Links, v.Index(count).Interface())
+			// Map the data onto the parent struct
+			err = client.mapData(v.Index(count), reflect.TypeOf(m.parent).Elem(), sibling.Data, sibling.Links, m.parent)
+			// Copy the parent struct to the slice element
+			v.Index(count).Set(reflect.ValueOf(m.parent).Elem())
 			count += 1
 		}
 	}
@@ -335,13 +341,19 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 		return DestinationNotInitialized
 	}
 	// Start with the _type
-	data := []byte(fmt.Sprintf(`{"_type":"%v",`, dt.Name()))
+	data := []byte(fmt.Sprintf(`{"_type":"%v"`, dt.Name()))
 	// Now JSON encode the entire struct
 	js, err := Marshal(dest)
 	if err != nil {
 		return err
 	}
-	data = append(data, js[1:]...) // Add the JSON for the struct minus the opening '{'
+	if len(js) > 2 {
+		// If js is not "empty" {}, then append it with the first char changed to ,
+		js[0] = ','
+		data = append(data, js...)
+	} else {
+		data = append(data, '}')
+	}
 	// Now add the Links
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
@@ -373,7 +385,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 			}
 		}
 	}
-	fmt.Printf("Saving data for %v as %v\n", dt.Name(), string(data))
+	//fmt.Printf("Saving data for %v as %v\n", dt.Name(), string(data))
 	model.robject.Data = data
 	if newKey != "±___unchanged___±" {
 		model.robject.Key = newKey
