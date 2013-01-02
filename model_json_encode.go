@@ -302,8 +302,11 @@ func (e *encodeState) reflectValueQuoted(v reflect.Value, quoted bool) {
 		}
 
 	case reflect.Struct:
-		e.WriteByte('{')
-		first := true
+		// Special handling for riak - include a "_type" field with the name of the struct
+		e.WriteString(`{"_type":"`)
+		e.WriteString(reflect.TypeOf(v.Interface()).Name())
+		e.WriteByte('"')
+		first := false
 		for _, ef := range encodeFields(v.Type()) {
 			fieldValue := v.Field(ef.i)
 			if ef.omitEmpty && isEmptyValue(fieldValue) {

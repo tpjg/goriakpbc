@@ -346,19 +346,10 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	if model.robject == nil {
 		return DestinationNotInitialized
 	}
-	// Start with the _type
-	data := []byte(fmt.Sprintf(`{"_type":"%v"`, dt.Name()))
-	// Now JSON encode the entire struct
-	js, err := Marshal(dest)
+	// JSON encode the entire struct
+	data, err := Marshal(dest)
 	if err != nil {
 		return err
-	}
-	if len(js) > 2 {
-		// If js is not "empty" {}, then append it with the first char changed to ,
-		js[0] = ','
-		data = append(data, js...)
-	} else {
-		data = append(data, '}')
 	}
 	// Now add the Links
 	for i := 0; i < dt.NumField(); i++ {

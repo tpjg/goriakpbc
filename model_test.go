@@ -26,6 +26,7 @@ func TestModel(t *testing.T) {
 	err = doc.Save()
 	assert.T(t, err == nil)
 	// Check that the JSON is correct
+	t.Logf(string(doc.robject.Data))
 	assert.T(t, `{"_type":"DocumentModel","string_field":"text","float_field":1.2,"FieldB":true}` == string(doc.robject.Data))
 
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
@@ -141,6 +142,7 @@ func TestModelWithManyLinks(t *testing.T) {
 	err = client.New("testmodel.go", "TestMany", &doc)
 	assert.T(t, err == nil)
 	err = doc.Save()
+	t.Logf("Friends json - %v\n", string(doc.robject.Data))
 
 	// Now load a new document and verify it has two links
 	var doc2 FriendLinks
@@ -255,4 +257,38 @@ func TestModelTime(t *testing.T) {
 	assert.T(t, doc2.FieldS == doc.FieldS)
 	t.Logf("FieldT= %v ? %v\n", doc2.FieldT, doc.FieldT)
 	assert.T(t, doc2.FieldT.Equal(doc.FieldT))
+}
+
+type SubStruct struct {
+	Value string "value"
+}
+
+type DMInclude struct {
+	Name string    "name"
+	Sub  SubStruct "sub"
+	Model
+}
+
+func TestModelIncludingOtherStruct(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create and save
+	doc := DMInclude{Name: "some name", Sub: SubStruct{Value: "some value"}}
+	err := client.New("testmodel.go", "TestModelIncludingOtherStruct", &doc)
+	assert.T(t, err == nil)
+	//err = client.Save(&doc)
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
+	doc2 := DMInclude{}
+	err = client.Load("testmodel.go", "TestModelIncludingOtherStruct", &doc2)
+	t.Logf("doc2 json = %v\n", string(doc2.robject.Data))
+	assert.T(t, err == nil)
+	assert.T(t, string(doc2.robject.Data) == `{"_type":"DMInclude","name":"some name","sub":{"_type":"SubStruct","value":"some value"}}`)
+	assert.T(t, doc2.Name == doc.Name)
+	t.Logf("Sub struct = %v ? %v\n", doc2.Sub.Value, doc.Sub.Value)
+	assert.T(t, doc2.Sub.Value == doc.Sub.Value)
 }
