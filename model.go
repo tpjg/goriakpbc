@@ -176,11 +176,9 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	}
 	// Check if a slice is supplied
 	v := reflect.ValueOf(dest)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
-		err = DestinationError
-		return
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
 	}
-	v = v.Elem()
 	if v.Kind() != reflect.Slice {
 		return DestinationIsNotSlice
 	}
