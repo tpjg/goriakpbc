@@ -35,7 +35,7 @@ func main() {
 ```
 
 Parts of the library are specifically designed to facilitate projects that use both Ruby and Go. See the "Document Models" below.
-To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above. If the Document Models (ORM) features are not needed simply run `rm $GOPATH/src/github.com/tpjg/goriakpbc/*model*.go` after `go get`.
+To install run `go get github.com/tpjg/goriakpbc` and use import as in the example above. If the Document Models (ORM) features are not needed simply run `rm $GOPATH/src/github.com/tpjg/goriakpbc/model*.go` after `go get`.
 
 ### Documentation
 
@@ -114,4 +114,5 @@ err = dev.SaveAs("newkey")
 
 ### Licensing
 
-goriakpbc is distributed under the Apache license, see `LICENSE.txt` file or http://www.apache.org/licenses/LICENSE-2.0 for details.
+goriakpbc is distributed under the Apache license, see `LICENSE.txt` file or http://www.apache.org/licenses/LICENSE-2.0 for details. The model_json_*.go files are a copy from the original Go distribution with minor changes and are governed by a BSD-style license, see `LICENSE.go.txt`.
+

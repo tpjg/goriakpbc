@@ -1,12 +1,13 @@
+package riak
+
+// This file is a minor customization of the original encoding/json package for use in goriakpbc
+
 // Copyright 2010 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// license that can be found in the LICENSE.go.txt file.
 
 // Represents JSON data structure using native Go types: booleans, floats,
 // strings, arrays, and maps.
-
-// This file is a minor customization of the original encoding/json package for use in goriakpbc
-package riak
 
 import (
 	"encoding/base64"
