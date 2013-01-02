@@ -1,14 +1,15 @@
 package riak
 
 import (
+	"fmt"
 	"github.com/bmizerany/assert"
 	"testing"
 	"time"
 )
 
 type DocumentModel struct {
-	FieldS string
-	FieldF float64
+	FieldS string  "string_field"
+	FieldF float64 "float_field"
 	FieldB bool
 	Model
 }
@@ -22,9 +23,11 @@ func TestModel(t *testing.T) {
 	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
 	err := client.New("testmodel.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
-	//err = client.Save(&doc)
 	err = doc.Save()
 	assert.T(t, err == nil)
+	// Check that the JSON is correct
+	t.Logf(string(doc.robject.Data))
+	assert.T(t, `{"_type":"DocumentModel","string_field":"text","float_field":1.2,"FieldB":true}` == string(doc.robject.Data))
 
 	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
 	doc2 := DocumentModel{}
@@ -139,6 +142,7 @@ func TestModelWithManyLinks(t *testing.T) {
 	err = client.New("testmodel.go", "TestMany", &doc)
 	assert.T(t, err == nil)
 	err = doc.Save()
+	t.Logf("Friends json - %v\n", string(doc.robject.Data))
 
 	// Now load a new document and verify it has two links
 	var doc2 FriendLinks
@@ -159,15 +163,15 @@ from the siblings, the largest FieldF and sets FieldB to true if any of the
 siblings have it set to true.
 */
 func (d *DocumentModel) Resolve(count int) (err error) {
-	//fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
-	siblings := make([]DocumentModel, count, count)
+	fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
+	siblings := make([]DocumentModel, count)
 	err = d.GetSiblings(siblings)
 	if err != nil {
 		return err
 	}
-	//for i, s := range siblings {
-	//	fmt.Printf("DocumentModel %v - %v\n", i, s)
-	//}
+	for i, s := range siblings {
+		fmt.Printf("DocumentModel %v - %v\n", i, s)
+	}
 	d.FieldB = false
 	for _, s := range siblings {
 		if len(s.FieldS) > len(d.FieldS) {
@@ -253,4 +257,38 @@ func TestModelTime(t *testing.T) {
 	assert.T(t, doc2.FieldS == doc.FieldS)
 	t.Logf("FieldT= %v ? %v\n", doc2.FieldT, doc.FieldT)
 	assert.T(t, doc2.FieldT.Equal(doc.FieldT))
+}
+
+type SubStruct struct {
+	Value string "value"
+}
+
+type DMInclude struct {
+	Name string    "name"
+	Sub  SubStruct "sub"
+	Model
+}
+
+func TestModelIncludingOtherStruct(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create and save
+	doc := DMInclude{Name: "some name", Sub: SubStruct{Value: "some value"}}
+	err := client.New("testmodel.go", "TestModelIncludingOtherStruct", &doc)
+	assert.T(t, err == nil)
+	//err = client.Save(&doc)
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Load it from Riak and check that the fields of the DocumentModel struct are set correctly
+	doc2 := DMInclude{}
+	err = client.Load("testmodel.go", "TestModelIncludingOtherStruct", &doc2)
+	t.Logf("doc2 json = %v\n", string(doc2.robject.Data))
+	assert.T(t, err == nil)
+	assert.T(t, string(doc2.robject.Data) == `{"_type":"DMInclude","name":"some name","sub":{"_type":"SubStruct","value":"some value"}}`)
+	assert.T(t, doc2.Name == doc.Name)
+	t.Logf("Sub struct = %v ? %v\n", doc2.Sub.Value, doc.Sub.Value)
+	assert.T(t, doc2.Sub.Value == doc.Sub.Value)
 }

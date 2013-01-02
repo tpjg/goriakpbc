@@ -1,11 +1,9 @@
 package riak
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 )
 
 /*
@@ -44,8 +42,6 @@ type Model struct {
 
 type Resolver interface {
 	Resolve(int) error
-	JSONToField(reflect.Value, reflect.Value) bool
-	FieldToJSON(interface{}) string
 }
 
 // Error definitions
@@ -58,18 +54,11 @@ var (
 	DestinationNotInitialized = errors.New("Destination struct is not initialized (correctly) using riak.New or riak.Load")
 	ModelDoesNotMatch         = errors.New("Warning: struct name does not match _type in Riak")
 	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
+	NoSiblingData             = errors.New("No non-empty sibling data")
 )
 
 func (*Model) Resolve(count int) (err error) {
 	return ResolveNotImplemented
-}
-
-func (*Model) JSONToField(source reflect.Value, dest reflect.Value) (isset bool) {
-	return
-}
-
-func (*Model) FieldToJSON(field interface{}) (result string) {
-	return
 }
 
 // Link to one other model
@@ -81,61 +70,6 @@ type One struct {
 
 // Link to many other models
 type Many []One
-
-// Sets a Document Model's struct fields for non-standard types
-func internalJSONToField(source reflect.Value, dest reflect.Value, model Resolver) (isset bool) {
-	// See if the model has set this field
-	if model.JSONToField(source, dest) {
-		return true
-	}
-	// Implement some special field types that are supported
-	switch dest.Interface().(type) {
-	case time.Time:
-		if s, ok := source.Interface().(string); ok {
-			tmp, err := time.Parse(time.RFC3339, s)
-			dest.Set(reflect.ValueOf(tmp))
-			return err == nil
-		}
-	}
-	return
-}
-
-// Produces JSON for a Document Model's struct fields for non-standard types
-func internalFieldToJSON(field interface{}, model Resolver) (result string) {
-	// See if the model has converted to JSON
-	result = model.FieldToJSON(field)
-	if result != "" {
-		return
-	}
-	// Implement some special field types that are supported
-	switch f := field.(type) {
-	case time.Time:
-		result = `"` + f.Format(time.RFC3339Nano) + `"`
-	}
-	return
-}
-
-func setval(source reflect.Value, dest reflect.Value, model Resolver) {
-	// Handle special cases first - check if a special conversion succeeded
-	if internalJSONToField(source, dest, model) {
-		return
-	}
-	// Handle standard types
-	switch dest.Kind() {
-	case reflect.Bool:
-		dest.SetBool(source.Bool())
-		return
-	case reflect.String:
-		dest.SetString(source.String())
-		return
-	case reflect.Float32, reflect.Float64:
-		dest.SetFloat(source.Float())
-		return
-	case reflect.Int:
-		dest.SetInt(source.Int())
-		return
-	}
-}
 
 func (c *Client) setOneLink(source Link, dest reflect.Value) {
 	if dest.Kind() == reflect.Struct && dest.Type() == reflect.TypeOf(One{}) {
@@ -180,47 +114,54 @@ func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type
 	return
 }
 
+type ModelName struct {
+	XXXXModelNameXXXX string "_type"
+}
+
 /*
 	mapData, maps the decoded JSON data onto the right struct fields, including
 	decoding of links.
 */
-func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data map[string]interface{}, links []Link, model Resolver) (err error) {
-	// Double check there is a "_field" type that is the same as the struct
+func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links []Link, dest interface{}) (err error) {
+	// Double check there is a "_type" field that is the same as the struct
 	// name, this is only a warning though.
-	if dt.Name() != data["_type"] {
-		err = fmt.Errorf("Warning: struct name does not match _type in Riak")
+	var mn ModelName
+	err = Unmarshal(data, &mn)
+	if err != nil || dt.Name() != mn.XXXXModelNameXXXX {
+		err = fmt.Errorf("Warning: struct name does not match _type in Riak (%v)", err)
 	}
-	// For all fields in the struct, find the correct data / mapping
+	// Unmarshal the destination model
+	jserr := Unmarshal(data, dest)
+	if jserr != nil {
+		err = fmt.Errorf("%v - %v", err, jserr) // Add error
+	}
+	// For all the links in the struct, find the correct mapping
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
-		if data[ft.Name] != nil {
-			setval(reflect.ValueOf(data[ft.Name]), fv, model)
-		} else if data[string(ft.Tag)] != nil {
-			setval(reflect.ValueOf(data[string(ft.Tag)]), fv, model)
-		} else if ft.Type.Name() == "One" {
-			var tag string
+		if ft.Type == reflect.TypeOf(One{}) {
+			var name string
 			if ft.Tag != "" {
-				tag = string(ft.Tag)
+				name = string(ft.Tag)
 			} else {
-				tag = ft.Name
+				name = ft.Name
 			}
 			// Search in Links
 			for _, v := range links {
-				if v.Tag == tag {
+				if v.Tag == name {
 					c.setOneLink(v, fv)
 				}
 			}
-		} else if ft.Type.Name() == "Many" {
-			var tag string
+		} else if ft.Type == reflect.TypeOf(Many{}) {
+			var name string
 			if ft.Tag != "" {
-				tag = string(ft.Tag)
+				name = string(ft.Tag)
 			} else {
-				tag = ft.Name
+				name = ft.Name
 			}
 			// Search in Links
 			for _, v := range links {
-				if v.Tag == tag {
+				if v.Tag == name {
 					c.addOneLink(v, fv)
 				}
 			}
@@ -236,7 +177,9 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	}
 	// Check if a slice is supplied
 	v := reflect.ValueOf(dest)
-	t := reflect.TypeOf(dest)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
 	if v.Kind() != reflect.Slice {
 		return DestinationIsNotSlice
 	}
@@ -247,20 +190,24 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 			count += 1
 		}
 	}
+	if count == 0 {
+		return NoSiblingData
+	}
 	if v.Len() != count {
 		return DestinationLengthError
+	}
+	// Check the type of the slice elements
+	if reflect.TypeOf(v.Index(0).Interface()) != reflect.TypeOf(m.parent).Elem() {
+		return fmt.Errorf("Slice elements incorrect, must be %v", reflect.TypeOf(m.parent).Elem())
 	}
 	count = 0
 	// Walk over the slice and map the data for each sibling
 	for _, sibling := range m.robject.Siblings {
 		if len(sibling.Data) != 0 {
-			// Map the data onto the struct, first get it into a map
-			var data map[string]interface{}
-			err = json.Unmarshal(sibling.Data, &data)
-			if err != nil {
-				return err
-			}
-			client.mapData(v.Index(count), t.Elem(), data, sibling.Links, m.parent)
+			// Map the data onto the parent struct
+			err = client.mapData(v.Index(count), reflect.TypeOf(m.parent).Elem(), sibling.Data, sibling.Links, m.parent)
+			// Copy the parent struct to the slice element
+			v.Index(count).Set(reflect.ValueOf(m.parent).Elem())
 			count += 1
 		}
 	}
@@ -315,18 +262,8 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 		// Resolve the conflict and return the errorcode
 		return dest.Resolve(count)
 	}
-	// Map the data onto the struct, first get it into a map
-	var data map[string]interface{}
-	err = json.Unmarshal(obj.Data, &data)
-	if err != nil {
-		return err
-	}
-	// Double check there is a "_field" type that is the same as the struct
-	// name, this is only a warning though.
-	if dt.Name() != data["_type"] {
-		err = ModelDoesNotMatch
-	}
-	err = c.mapData(dv, dt, data, obj.Links, dest)
+	// Map the data onto the struct.
+	err = c.mapData(dv, dt, obj.Data, obj.Links, dest)
 
 	// Set the values in the riak.Model field
 	model := &Model{robject: obj, parent: dest}
@@ -409,19 +346,20 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	if model.robject == nil {
 		return DestinationNotInitialized
 	}
-	// Start with the _type
-	data := []byte(`{"_type":`)
-	js, _ := json.Marshal(dt.Name())
-	data = append(data, js...)
-	// Now add the other fields, as long as they're "simple" fields
+	// JSON encode the entire struct
+	data, err := Marshal(dest)
+	if err != nil {
+		return err
+	}
+	// Now add the Links
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
-		var field string
+		var fieldname string
 		if ft.Tag != "" {
-			field = string(ft.Tag)
+			fieldname = string(ft.Tag)
 		} else {
-			field = ft.Name
+			fieldname = ft.Name
 		}
 		if ft.Type == reflect.TypeOf(One{}) {
 			// Save a link, set the One struct first
@@ -430,11 +368,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 			lmv = lmv.Elem()
 			lmv.Set(fv)
 			// Now use that to link with the given tag or the name
-			if ft.Tag != "" {
-				c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
-			} else {
-				c.linkToModel(model.robject, lmodel.model, ft.Name)
-			}
+			c.linkToModel(model.robject, lmodel.model, fieldname)
 		}
 		if ft.Type == reflect.TypeOf(Many{}) {
 			// Save the links, create a Many struct first
@@ -444,35 +378,11 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 			lmv.Set(fv)
 			// Now walk over those links...
 			for _, lmodel := range *lmodels {
-				if ft.Tag != "" {
-					c.linkToModel(model.robject, lmodel.model, string(ft.Tag))
-				} else {
-					c.linkToModel(model.robject, lmodel.model, ft.Name)
-				}
-			}
-		}
-		// Add this field to the output JSON, first the special cases
-		fjs := internalFieldToJSON(fv.Interface(), dest)
-		if fjs != "" {
-			js, _ = json.Marshal(field)
-			data = append(data, ',')
-			data = append(data, js...)
-			data = append(data, ':')
-			data = append(data, []byte(fjs)...)
-		} else {
-			// No special case, handle the standard types
-			switch ft.Type.Kind() {
-			case reflect.String, reflect.Float32, reflect.Float64, reflect.Bool, reflect.Int:
-				js, _ = json.Marshal(field)
-				data = append(data, ',')
-				data = append(data, js...)
-				data = append(data, ':')
-				js, _ = json.Marshal(fv.Interface())
-				data = append(data, js...)
+				c.linkToModel(model.robject, lmodel.model, fieldname)
 			}
 		}
 	}
-	data = append(data, '}')
+	//fmt.Printf("Saving data for %v as %v\n", dt.Name(), string(data))
 	model.robject.Data = data
 	if newKey != "±___unchanged___±" {
 		model.robject.Key = newKey
