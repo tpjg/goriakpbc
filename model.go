@@ -446,6 +446,11 @@ func (m *Model) Save() (err error) {
 	return m.SaveAs("±___unchanged___±")
 }
 
+// Delete a Document Model
+func (m *Model) Delete() (err error) {
+	return m.robject.Destroy()
+}
+
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
