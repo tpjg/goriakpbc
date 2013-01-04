@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 /*
@@ -56,6 +57,25 @@ var (
 	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
 	NoSiblingData             = errors.New("No non-empty sibling data")
 )
+
+/*
+Return is an error is really a warning, e.g. a common json error, or 
+ModelDoesNotMatch.
+*/
+func IsWarning(err error) bool {
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "<nil> - json: cannot unmarshal") && strings.Contains(err.Error(), "into Go value of type") {
+			return true
+		} else if err == ModelDoesNotMatch {
+			return true
+		}
+	} else {
+		// In case there is no error reply true anyway since this is probably 
+		// what is expected - a check whether it is safe to continue.
+		return true
+	}
+	return false
+}
 
 func (*Model) Resolve(count int) (err error) {
 	return ResolveNotImplemented
