@@ -110,7 +110,7 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 }
 
 // Check if the passed destination is a pointer to a struct with riak.Model field
-func (c *Client) check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
+func check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
 		err = DestinationError
@@ -249,7 +249,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 */
 func (c *Client) Load(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
-	dv, dt, rm, err := c.check_dest(dest)
+	dv, dt, rm, err := check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ a struct that has the riak.Model field.
 */
 func (c *Client) New(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
-	_, dt, rm, err := c.check_dest(dest)
+	_, dt, rm, err := check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -333,7 +333,7 @@ func (c *Client) New(bucketname string, key string, dest Resolver, options ...ma
 // Creates a link to a given model
 func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err error) {
 	// Check destination
-	_, _, rm, err := c.check_dest(dest)
+	_, _, rm, err := check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	// Check destination
-	dv, dt, rm, err := c.check_dest(dest)
+	dv, dt, rm, err := check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -449,7 +449,7 @@ func (m *Model) Save() (err error) {
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
-	_, _, rm, err := c.check_dest(dest)
+	_, _, rm, err := check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -477,7 +477,7 @@ func (m Model) Key() (key string) {
 // Set the Key value, note that this does not save the model, it only changes the data structure
 func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	// Check destination
-	_, _, rm, err := c.check_dest(dest)
+	_, _, rm, err := check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -507,8 +507,12 @@ func (o One) Link() (link Link) {
 	return o.link
 }
 
-func (o *One) Set(dest interface{}) {
-	o.model = dest
+func (o *One) Set(dest interface{}) (err error) {
+	_, _, _, err = check_dest(dest)
+	if err == nil {
+		o.model = dest
+	}
+	return
 }
 
 func (o *One) Get(dest Resolver) (err error) {
@@ -518,6 +522,10 @@ func (o *One) Get(dest Resolver) (err error) {
 	return o.client.Load(o.link.Bucket, o.link.Key, dest)
 }
 
-func (m *Many) Add(dest interface{}) {
-	*m = append(*m, One{model: dest})
+func (m *Many) Add(dest interface{}) (err error) {
+	_, _, _, err = check_dest(dest)
+	if err == nil {
+		*m = append(*m, One{model: dest})
+	}
+	return err
 }
