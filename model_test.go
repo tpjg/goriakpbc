@@ -37,6 +37,10 @@ func TestModel(t *testing.T) {
 	assert.T(t, doc2.FieldF == doc.FieldF)
 	assert.T(t, doc2.FieldB == doc.FieldB)
 
+	// Cleanup
+	err = doc2.Delete()
+	assert.T(t, err == nil)
+
 	// Get the key
 	key, err := client.Key(&doc2)
 	assert.T(t, err == nil)
@@ -49,10 +53,10 @@ func TestModel(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, key == "newTestModelKey")
 
-	// Cleanup
-	bucket, _ := client.Bucket("testmodel.go")
-	err = bucket.Delete("TestModelKey")
-	assert.T(t, err == nil)
+	// Test Delete(), so test if the cleanup worked
+	doc3 := DocumentModel{}
+	err = client.Load("testmodel.go", "TestModelKey", &doc3)
+	assert.T(t, err == NotFound)
 }
 
 type DocumentModelWithLinks struct {
