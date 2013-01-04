@@ -77,7 +77,8 @@ func TestModelWithLinks(t *testing.T) {
 
 	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
 	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}}
-	doc.BLink.Set(&parent) // testing One.Set while we're at it
+	err = doc.BLink.Set(&parent) // testing One.Set while we're at it
+	assert.T(t, err == nil)
 	err = client.New("testmodellinks.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
 	//err = client.Save(&doc)
@@ -138,7 +139,8 @@ func TestModelWithManyLinks(t *testing.T) {
 	// Create a new "FriendLinks" to and save it
 	doc := FriendLinks{Friends: Many{One{model: &f1}}}
 	// Testing Many.Add while we're at it.
-	doc.Friends.Add(&f2)
+	err = doc.Friends.Add(&f2)
+	assert.T(t, err == nil)
 	err = client.New("testmodel.go", "TestMany", &doc)
 	assert.T(t, err == nil)
 	err = doc.Save()
