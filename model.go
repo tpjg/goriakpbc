@@ -451,6 +451,41 @@ func (m *Model) Delete() (err error) {
 	return m.robject.Destroy()
 }
 
+// Reload a Document Model
+func (m *Model) Reload() (err error) {
+	vclock := string(m.robject.Vclock)
+	err = m.robject.Reload()
+	if err != nil {
+		return err
+	}
+	// Check if there was any change
+	if string(m.robject.Vclock) != vclock {
+		// Set the content again
+		if m.robject.Conflict() {
+			// Count number of non-empty siblings for which a conflict must be resolved
+			count := 0
+			for _, s := range m.robject.Siblings {
+				if len(s.Data) != 0 {
+					count += 1
+				}
+			}
+			// Resolve the conflict and return the errorcode
+			return m.parent.Resolve(count)
+		}
+		// Map the data onto the struct.
+		dv, dt, _, err := check_dest(m.parent)
+		c, err := m.getClient()
+		if err != nil {
+			return err
+		}
+		err = c.mapData(dv, dt, m.robject.Data, m.robject.Links, m.parent)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
