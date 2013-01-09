@@ -298,3 +298,30 @@ func TestModelIncludingOtherStruct(t *testing.T) {
 	t.Logf("Sub struct = %v ? %v\n", doc2.Sub.Value, doc.Sub.Value)
 	assert.T(t, doc2.Sub.Value == doc.Sub.Value)
 }
+
+func TestModelReload(t *testing.T) {
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a new "DocumentModel" and save it
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err := client.New("testmodel.go", "TestModelKey", &doc)
+	assert.T(t, err == nil)
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	doc2 := DocumentModel{FieldS: "text22", FieldF: 1.4, FieldB: true}
+	err = client.New("testmodel.go", "TestModelKey", &doc2)
+	err = doc2.Save()
+	assert.T(t, err == nil)
+
+	vclock := string(doc.robject.Vclock)
+	err = (&doc).Reload()
+	assert.T(t, err == nil)
+	assert.T(t, string(doc.robject.Vclock) != vclock)
+	assert.T(t, string(doc.robject.Vclock) == string(doc2.robject.Vclock))
+	assert.T(t, doc.FieldS == doc2.FieldS)
+	assert.T(t, doc.FieldF == doc2.FieldF)
+	assert.T(t, doc.FieldB == doc2.FieldB)
+}
