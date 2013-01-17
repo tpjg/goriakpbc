@@ -221,11 +221,16 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 		return fmt.Errorf("Slice elements incorrect, must be %v", reflect.TypeOf(m.parent).Elem())
 	}
 	count = 0
+	// Double check the parent and get the Value and Type
+	dv, dt, _, err := check_dest(m.parent)
+	if err != nil {
+		return err
+	}
 	// Walk over the slice and map the data for each sibling
 	for _, sibling := range m.robject.Siblings {
 		if len(sibling.Data) != 0 {
 			// Map the data onto the parent struct
-			err = client.mapData(v.Index(count), reflect.TypeOf(m.parent).Elem(), sibling.Data, sibling.Links, m.parent)
+			err = client.mapData(dv, dt, sibling.Data, sibling.Links, m.parent)
 			// Copy the parent struct to the slice element
 			v.Index(count).Set(reflect.ValueOf(m.parent).Elem())
 			count += 1
