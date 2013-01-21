@@ -336,11 +336,11 @@ func (c *Client) New(bucketname string, key string, dest Resolver, options ...ma
 }
 
 // Creates a link to a given model
-func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err error) {
+func (c *Client) linkToModel(dest interface{}) (link Link, err error) {
 	// Check destination
 	_, _, rm, err := check_dest(dest)
 	if err != nil {
-		return err
+		return
 	}
 	// Get the Model field
 	model := &Model{}
@@ -349,10 +349,11 @@ func (c *Client) linkToModel(obj *RObject, dest interface{}, tag string) (err er
 	mv.Set(rm)
 	// Now check if there is an RObject, otherwise probably not correctly instantiated with .New (or Load).
 	if model.robject == nil {
-		return DestinationNotInitialized
+		err = DestinationNotInitialized
+		return
 	}
-	obj.LinkTo(model.robject, tag)
-	return nil
+	link = Link{Bucket: model.robject.Bucket.name, Key: model.robject.Key}
+	return
 }
 
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
@@ -392,8 +393,12 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 			lmv := reflect.ValueOf(lmodel)
 			lmv = lmv.Elem()
 			lmv.Set(fv)
-			// Now use that to link with the given tag or the name
-			c.linkToModel(model.robject, lmodel.model, fieldname)
+			// If the link is not set, create it now.
+			if lmodel.link.Bucket == "" || lmodel.link.Key == "" {
+				lmodel.link, _ = c.linkToModel(lmodel.model)
+			}
+			// Add the link (if not already in the object's links)
+			model.robject.AddLink(Link{lmodel.link.Bucket, lmodel.link.Key, fieldname})
 		}
 		if ft.Type == reflect.TypeOf(Many{}) {
 			// Save the links, create a Many struct first
@@ -403,7 +408,12 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 			lmv.Set(fv)
 			// Now walk over those links...
 			for _, lmodel := range *lmodels {
-				c.linkToModel(model.robject, lmodel.model, fieldname)
+				// If the link is not set, create it now.
+				if lmodel.link.Bucket == "" || lmodel.link.Key == "" {
+					lmodel.link, _ = c.linkToModel(lmodel.model)
+				}
+				// Add the link (if not already in the object's links)
+				model.robject.AddLink(Link{lmodel.link.Bucket, lmodel.link.Key, fieldname})
 			}
 		}
 	}
@@ -552,10 +562,12 @@ func (o One) Link() (link Link) {
 	return o.link
 }
 
-func (o *One) Set(dest interface{}) (err error) {
+// Set the link to a given Model (dest)
+func (o *One) Set(dest Resolver) (err error) {
 	_, _, _, err = check_dest(dest)
 	if err == nil {
 		o.model = dest
+		o.link, err = o.client.linkToModel(dest)
 	}
 	return
 }
@@ -567,10 +579,15 @@ func (o *One) Get(dest Resolver) (err error) {
 	return o.client.Load(o.link.Bucket, o.link.Key, dest)
 }
 
-func (m *Many) Add(dest interface{}) (err error) {
+// Add a Link to the given Model (dest)
+func (m *Many) Add(dest Resolver) (err error) {
 	_, _, _, err = check_dest(dest)
 	if err == nil {
-		*m = append(*m, One{model: dest})
+		o := One{model: dest}
+		o.link, err = o.client.linkToModel(dest)
+		*m = append(*m, o)
 	}
 	return err
 }
+
+//TODO: create "Remove" for Many links
