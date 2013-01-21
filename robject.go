@@ -202,6 +202,17 @@ func (obj *RObject) LinkTo(target *RObject, tag string) {
 	}
 }
 
+// Add a link if it is not already in the Links slics, returns false if already present
+func (obj *RObject) AddLink(link Link) bool {
+	for _, el := range obj.Links {
+		if el.Bucket == link.Bucket && el.Key == link.Key && el.Tag == link.Tag {
+			return false
+		}
+	}
+	obj.Links = append(obj.Links, link)
+	return true
+}
+
 // Get an object
 func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, err error) {
 	req := &RpbGetReq{
