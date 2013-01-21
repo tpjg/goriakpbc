@@ -55,6 +55,9 @@ func (obj *RObject) Store() (err error) {
 	if obj.Key != "" {
 		req.Key = []byte(obj.Key)
 	}
+	if len(obj.Vclock) > 0 {
+		req.Vclock = obj.Vclock
+	}
 	// Add the links
 	req.Content.Links = make([]*RpbLink, len(obj.Links))
 	for i, v := range obj.Links {
