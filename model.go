@@ -419,6 +419,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	}
 	//fmt.Printf("Saving data for %v as %v\n", dt.Name(), string(data))
 	model.robject.Data = data
+	model.robject.ContentType = `ContentType: "application/json"`
 	if newKey != "±___unchanged___±" {
 		model.robject.Key = newKey
 	}
