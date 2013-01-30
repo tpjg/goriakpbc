@@ -1,5 +1,9 @@
 package riak
 
+import (
+	"github.com/tpjg/goriakpbc/pb"
+)
+
 // Implements access to a bucket and its properties
 type Bucket struct {
 	name      string
@@ -10,7 +14,7 @@ type Bucket struct {
 
 // Return a bucket
 func (c *Client) Bucket(name string) (*Bucket, error) {
-	req := &RpbGetBucketReq{
+	req := &pb.RpbGetBucketReq{
 		Bucket: []byte(name),
 	}
 	err, conn := c.request(req, "RpbGetBucketReq")
@@ -18,7 +22,7 @@ func (c *Client) Bucket(name string) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp := &RpbGetBucketResp{}
+	resp := &pb.RpbGetBucketResp{}
 	err = c.response(conn, resp)
 
 	if err != nil {
@@ -40,8 +44,8 @@ func (b *Bucket) AllowMult() bool {
 
 // Set the nval property of a bucket
 func (b *Bucket) SetNVal(nval uint32) (err error) {
-	props := &RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult}
-	req := &RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
+	props := &pb.RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult}
+	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
 	err, conn := b.client.request(req, "RpbSetBucketReq")
 	if err != nil {
 		return err
@@ -56,8 +60,8 @@ func (b *Bucket) SetNVal(nval uint32) (err error) {
 
 // Set the allowMult property of a bucket
 func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
-	props := &RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult}
-	req := &RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
+	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult}
+	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
 	err, conn := b.client.request(req, "RpbSetBucketReq")
 	if err != nil {
 		return err
@@ -72,7 +76,7 @@ func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 
 // Delete a key/value from the bucket
 func (b *Bucket) Delete(key string, options ...map[string]uint32) (err error) {
-	req := &RpbDelReq{Bucket: []byte(b.name), Key: []byte(key)}
+	req := &pb.RpbDelReq{Bucket: []byte(b.name), Key: []byte(key)}
 	for _, omap := range options {
 		for k, v := range omap {
 			switch k {
@@ -115,7 +119,7 @@ func (b *Bucket) New(key string, options ...map[string]uint32) *RObject {
 // Test if an object exists
 func (b *Bucket) Exists(key string, options ...map[string]uint32) (exists bool, err error) {
 	t := true
-	req := &RpbGetReq{
+	req := &pb.RpbGetReq{
 		Bucket:     []byte(b.name),
 		Key:        []byte(key),
 		NotfoundOk: &t,
@@ -135,7 +139,7 @@ func (b *Bucket) Exists(key string, options ...map[string]uint32) (exists bool, 
 	if err != nil {
 		return false, err
 	}
-	resp := &RpbGetResp{}
+	resp := &pb.RpbGetResp{}
 	err = b.client.response(conn, resp)
 	if err != nil {
 		return false, err
@@ -145,13 +149,13 @@ func (b *Bucket) Exists(key string, options ...map[string]uint32) (exists bool, 
 
 // Return a list of keys using the index for a single key
 func (b *Bucket) IndexQuery(index string, key string) (keys []string, err error) {
-	req := &RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
-		Qtype: RpbIndexReq_eq.Enum(), Key: []byte(key)}
+	req := &pb.RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
+		Qtype: pb.RpbIndexReq_eq.Enum(), Key: []byte(key)}
 	err, conn := b.client.request(req, "RpbIndexReq")
 	if err != nil {
 		return nil, err
 	}
-	resp := &RpbIndexResp{}
+	resp := &pb.RpbIndexResp{}
 	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
@@ -165,14 +169,14 @@ func (b *Bucket) IndexQuery(index string, key string) (keys []string, err error)
 
 // Return a list of keys using the index range query
 func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []string, err error) {
-	req := &RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
-		Qtype:    RpbIndexReq_range.Enum(),
+	req := &pb.RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
+		Qtype:    pb.RpbIndexReq_range.Enum(),
 		RangeMin: []byte(min), RangeMax: []byte(max)}
 	err, conn := b.client.request(req, "RpbIndexReq")
 	if err != nil {
 		return nil, err
 	}
-	resp := &RpbIndexResp{}
+	resp := &pb.RpbIndexResp{}
 	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
@@ -186,7 +190,7 @@ func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []s
 
 // List all keys from bucket
 func (b *Bucket) ListKeys() (response [][]byte, err error) {
-	req := &RpbListKeysReq{Bucket: []byte(b.name)}
+	req := &pb.RpbListKeysReq{Bucket: []byte(b.name)}
 
 	err, conn := b.client.request(req, "RpbListKeysReq")
 	if err != nil {
