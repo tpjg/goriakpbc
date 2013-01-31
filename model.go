@@ -10,29 +10,31 @@ import (
 )
 
 /*
-Make structs work like a Document Model, similar to how the Ruby based "ripple" 
-gem works. This is done by parsing the JSON data and mapping it to the struct's 
-fields. To enable easy integration with Ruby/ripple projects the struct "tag" 
-feature of Go is used to possibly get around the naming convention differences 
-between Go and Ruby (Uppercase starting letter required for export and t
-ypically CamelCase versus underscores). Also it stores the model/struct name 
+Make structs work like a Document Model, similar to how the Ruby based "ripple"
+gem works. This is done by parsing the JSON data and mapping it to the struct's
+fields. To enable easy integration with Ruby/ripple projects the struct "tag"
+feature of Go is used to possibly get around the naming convention differences
+between Go and Ruby (Uppercase starting letter required for export and
+typically CamelCase versus underscores). Also it stores the model/struct name
 as _type in Riak.
 
 For example the following Ruby/Ripple class:
-class Device
-  include Ripple::Document
-  property :ip, String
-  property :description, String
-  property :download_enabled, Boolean
-end
+
+	class Device
+	  include Ripple::Document
+	  property :ip, String
+	  property :description, String
+	  property :download_enabled, Boolean
+	end
 
 can be mapped to the following Go class:
-type Device struct {
-	Download_enabled bool    "download_enabled"
-	Ip               string  "ip"
-	Description      string  "description"
-    riak.Model
-}
+
+	type Device struct {
+		Download_enabled bool    `riak:"download_enabled"`
+		Ip               string  `riak:"ip"`
+		Description      string  `riak:"description"`
+		riak.Model
+	}
 
 Note that it is required to have a riak.Model field.
 Also if the field name in Ripple is equal the extra tag is not needed, (e.g.
@@ -61,7 +63,7 @@ var (
 )
 
 /*
-Return is an error is really a warning, e.g. a common json error, or 
+Return is an error is really a warning, e.g. a common json error, or
 ModelDoesNotMatch.
 */
 func IsWarning(err error) bool {
@@ -72,7 +74,7 @@ func IsWarning(err error) bool {
 			return true
 		}
 	} else {
-		// In case there is no error reply true anyway since this is probably 
+		// In case there is no error reply true anyway since this is probably
 		// what is expected - a check whether it is safe to continue.
 		return true
 	}
@@ -241,7 +243,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	return
 }
 
-/*	
+/*
 	The Load function retrieves the data from Riak and stores it in the struct
 	that is passed as destination. It stores some necessary information in the
 	riak.Model field so it can be used later in other (Save) operations.
@@ -302,7 +304,7 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 }
 
 /*
-Create a new Document Model, passing in the bucketname and key. The key can be 
+Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the riak.Model field.
 */
@@ -319,7 +321,7 @@ func (c *Client) New(bucketname string, key string, dest Resolver, options ...ma
 		return
 	}
 	// Check if the RObject field within riak.Model is still nill, otherwise
-	// this destination (dest) is probably an already fully instantiated 
+	// this destination (dest) is probably an already fully instantiated
 	// struct.
 	model := &Model{}
 	mv := reflect.ValueOf(model)
@@ -328,7 +330,7 @@ func (c *Client) New(bucketname string, key string, dest Resolver, options ...ma
 	if model.robject != nil {
 		return ModelNotNew
 	}
-	// For the riak.Model field within the struct, set the Client and Bucket 
+	// For the riak.Model field within the struct, set the Client and Bucket
 	// and fields and set the RObject field to nil.
 	model.robject = &RObject{Bucket: bucket, Key: key, ContentType: "application/json", Options: options}
 	model.parent = dest
