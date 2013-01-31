@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/tpjg/goriakpbc/json"
 )
 
 /*
@@ -146,12 +148,12 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links [
 	// Double check there is a "_type" field that is the same as the struct
 	// name, this is only a warning though.
 	var mn modelName
-	err = Unmarshal(data, &mn)
+	err = json.Unmarshal(data, &mn)
 	if err != nil || dt.Name() != mn.Type {
 		err = fmt.Errorf("Warning: struct name does not match _type in Riak (%v)", err)
 	}
 	// Unmarshal the destination model
-	jserr := Unmarshal(data, dest)
+	jserr := json.Unmarshal(data, dest)
 	if jserr != nil {
 		err = fmt.Errorf("%v - %v", err, jserr) // Add error
 	}
@@ -373,7 +375,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 		return DestinationNotInitialized
 	}
 	// JSON encode the entire struct
-	data, err := Marshal(dest)
+	data, err := json.Marshal(dest)
 	if err != nil {
 		return err
 	}
@@ -592,3 +594,9 @@ func (m *Many) Add(dest Resolver) (err error) {
 }
 
 //TODO: create "Remove" for Many links
+
+func init() {
+	json.SkipTypes[reflect.TypeOf(Model{})] = true
+	json.SkipTypes[reflect.TypeOf(One{})] = true
+	json.SkipTypes[reflect.TypeOf(Many{})] = true
+}
