@@ -146,7 +146,7 @@ func (c *Client) releaseConn(conn *net.TCPConn) {
 }
 
 // Request serializes the data (using protobuf), adds the header and sends it to Riak.
-func (c *Client) request(req proto.Message, name string) (err error, conn *net.TCPConn) {
+func (c *Client) request(req proto.Message, code byte) (err error, conn *net.TCPConn) {
 	err, conn = c.getConn()
 	if err != nil {
 		return err, nil
@@ -158,7 +158,7 @@ func (c *Client) request(req proto.Message, name string) (err error, conn *net.T
 	}
 	// Build message with header: <length:32> <msg_code:8> <pbmsg>
 	i := int32(len(pbmsg) + 1)
-	msgbuf := []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i), messageCodes[name]}
+	msgbuf := []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i), code}
 	msgbuf = append(msgbuf, pbmsg...)
 	// Send to Riak
 	err = c.write(conn, msgbuf)
@@ -211,14 +211,13 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 	// Deserialize, by default the calling method should provide the expected RbpXXXResp
 	msgcode := msgbuf[4]
 	switch msgcode {
-	case messageCodes["RpbErrorResp"]:
+	case rpbErrorResp:
 		errResp := &pb.RpbErrorResp{}
 		err = proto.Unmarshal(pbmsg, errResp)
 		if err == nil {
 			err = errors.New(string(errResp.Errmsg))
 		}
-	case messageCodes["RpbPingResp"], messageCodes["RpbSetClientIdResp"],
-		messageCodes["RpbSetBucketResp"], messageCodes["RpbDelResp"]:
+	case rpbPingResp, rpbSetClientIdResp, rpbSetBucketResp, rpbDelResp:
 		return nil
 	default:
 		err = proto.Unmarshal(pbmsg, response)
@@ -248,7 +247,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 
 	// Deserialize, by default the calling method should provide the expected RbpXXXResp
 	msgcode := msgbuf[4]
-	if msgcode == messageCodes["RpbMapRedResp"] {
+	if msgcode == rpbMapRedResp {
 		partial := &pb.RpbMapRedResp{}
 		err = proto.Unmarshal(pbmsg, partial)
 		if err != nil {
@@ -289,7 +288,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 		}
 		response = resp
 		return
-	} else if msgcode == messageCodes["RpbErrorResp"] {
+	} else if msgcode == rpbErrorResp {
 		errResp := &pb.RpbErrorResp{}
 		err = proto.Unmarshal(pbmsg, errResp)
 		if err == nil {
@@ -333,7 +332,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 		// Deserialize, by default the calling method should provide the expected RbpXXXResp
 		msgcode = msgbuf[4]
 
-		if msgcode == messageCodes["RpbListKeysResp"] {
+		if msgcode == rpbListKeysResp {
 			partial = &pb.RpbListKeysResp{}
 			err = proto.Unmarshal(pbmsg, partial)
 			if err != nil {
@@ -345,7 +344,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 			if partial.Done != nil {
 				break
 			}
-		} else if msgcode == messageCodes["RpbErrorResp"] {
+		} else if msgcode == rpbErrorResp {
 			errResp := &pb.RpbErrorResp{}
 			err = proto.Unmarshal(pbmsg, errResp)
 			if err == nil {
@@ -365,7 +364,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 // Ping the server
 func (c *Client) Ping() (err error) {
 	// Use hardcoded request, no need to serialize
-	msg := []byte{0, 0, 0, 1, messageCodes["RpbPingReq"]}
+	msg := []byte{0, 0, 0, 1, rpbPingReq}
 	err, conn := c.getConn()
 	if err != nil {
 		return err
@@ -380,7 +379,7 @@ func (c *Client) Ping() (err error) {
 // Get the client Id
 func (c *Client) Id() (id string, err error) {
 	// Use hardcoded request, no need to serialize
-	msg := []byte{0, 0, 0, 1, messageCodes["RpbGetClientIdReq"]}
+	msg := []byte{0, 0, 0, 1, rpbGetClientIdReq}
 	err, conn := c.getConn()
 	if err != nil {
 		return id, err
@@ -397,7 +396,7 @@ func (c *Client) Id() (id string, err error) {
 // Set the client Id
 func (c *Client) SetId(id string) (err error) {
 	req := &pb.RpbSetClientIdReq{ClientId: []byte(id)}
-	err, conn := c.request(req, "RpbSetClientIdReq")
+	err, conn := c.request(req, rpbSetClientIdReq)
 	if err != nil {
 		return err
 	}
@@ -407,7 +406,7 @@ func (c *Client) SetId(id string) (err error) {
 
 // Get the server version
 func (c *Client) ServerVersion() (node string, version string, err error) {
-	msg := []byte{0, 0, 0, 1, messageCodes["RpbGetServerInfoReq"]}
+	msg := []byte{0, 0, 0, 1, rpbGetServerInfoReq}
 	err, conn := c.getConn()
 	if err != nil {
 		return node, version, err

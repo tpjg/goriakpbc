@@ -96,7 +96,7 @@ func (obj *RObject) Store() (err error) {
 	}
 
 	// Send the request
-	err, conn := obj.Bucket.client.request(req, "RpbPutReq")
+	err, conn := obj.Bucket.client.request(req, rpbPutReq)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (obj *RObject) Destroy() (err error) {
 		}
 	}
 
-	err, conn := obj.Bucket.client.request(req, "RpbDelReq")
+	err, conn := obj.Bucket.client.request(req, rpbDelReq)
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 			}
 		}
 	}
-	err, conn := b.client.request(req, "RpbGetReq")
+	err, conn := b.client.request(req, rpbGetReq)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (obj *RObject) Reload() (err error) {
 			}
 		}
 	}
-	err, conn := obj.Bucket.client.request(req, "RpbGetReq")
+	err, conn := obj.Bucket.client.request(req, rpbGetReq)
 	if err != nil {
 		return err
 	}
