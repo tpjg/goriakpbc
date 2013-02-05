@@ -134,8 +134,8 @@ func check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect
 	return
 }
 
-type ModelName struct {
-	XXXXModelNameXXXX string "_type"
+type modelName struct {
+	Type string `_type`
 }
 
 /*
@@ -145,9 +145,9 @@ type ModelName struct {
 func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links []Link, dest interface{}) (err error) {
 	// Double check there is a "_type" field that is the same as the struct
 	// name, this is only a warning though.
-	var mn ModelName
+	var mn modelName
 	err = Unmarshal(data, &mn)
-	if err != nil || dt.Name() != mn.XXXXModelNameXXXX {
+	if err != nil || dt.Name() != mn.Type {
 		err = fmt.Errorf("Warning: struct name does not match _type in Riak (%v)", err)
 	}
 	// Unmarshal the destination model
