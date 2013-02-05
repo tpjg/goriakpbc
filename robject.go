@@ -2,6 +2,8 @@ package riak
 
 import (
 	"errors"
+
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 // A Riak link
@@ -42,11 +44,11 @@ var (
 
 // Store an RObject
 func (obj *RObject) Store() (err error) {
-	// Create base RpbPutReq
+	// Create base pb.RpbPutReq
 	t := true
-	req := &RpbPutReq{
+	req := &pb.RpbPutReq{
 		Bucket: []byte(obj.Bucket.name),
-		Content: &RpbContent{
+		Content: &pb.RpbContent{
 			Value:       []byte(obj.Data),
 			ContentType: []byte(obj.ContentType),
 		},
@@ -59,24 +61,24 @@ func (obj *RObject) Store() (err error) {
 		req.Vclock = obj.Vclock
 	}
 	// Add the links
-	req.Content.Links = make([]*RpbLink, len(obj.Links))
+	req.Content.Links = make([]*pb.RpbLink, len(obj.Links))
 	for i, v := range obj.Links {
-		req.Content.Links[i] = &RpbLink{Bucket: []byte(v.Bucket),
+		req.Content.Links[i] = &pb.RpbLink{Bucket: []byte(v.Bucket),
 			Key: []byte(v.Key),
 			Tag: []byte(v.Tag)}
 	}
 	// Add the user metadata
-	req.Content.Usermeta = make([]*RpbPair, len(obj.Meta))
+	req.Content.Usermeta = make([]*pb.RpbPair, len(obj.Meta))
 	i := 0
 	for k, v := range obj.Meta {
-		req.Content.Usermeta[i] = &RpbPair{Key: []byte(k), Value: []byte(v)}
+		req.Content.Usermeta[i] = &pb.RpbPair{Key: []byte(k), Value: []byte(v)}
 		i += 1
 	}
 	// Add the indexes
-	req.Content.Indexes = make([]*RpbPair, len(obj.Indexes))
+	req.Content.Indexes = make([]*pb.RpbPair, len(obj.Indexes))
 	i = 0
 	for k, v := range obj.Indexes {
-		req.Content.Indexes[i] = &RpbPair{Key: []byte(k), Value: []byte(v)}
+		req.Content.Indexes[i] = &pb.RpbPair{Key: []byte(k), Value: []byte(v)}
 		i += 1
 	}
 	// Add the options
@@ -99,7 +101,7 @@ func (obj *RObject) Store() (err error) {
 		return err
 	}
 	// Get response, ReturnHead is true, so we can store the vclock
-	resp := &RpbPutResp{}
+	resp := &pb.RpbPutResp{}
 	err = obj.Bucket.client.response(conn, resp)
 	if err != nil {
 		return err
@@ -115,7 +117,7 @@ func (obj *RObject) Store() (err error) {
 
 // Delete the object from Riak
 func (obj *RObject) Destroy() (err error) {
-	req := &RpbDelReq{Bucket: []byte(obj.Bucket.name), Key: []byte(obj.Key), Vclock: obj.Vclock}
+	req := &pb.RpbDelReq{Bucket: []byte(obj.Bucket.name), Key: []byte(obj.Key), Vclock: obj.Vclock}
 	for _, omap := range obj.Options {
 		for k, v := range omap {
 			switch k {
@@ -151,8 +153,8 @@ func (obj *RObject) Conflict() bool {
 	return obj.conflict
 }
 
-// Sets the values that returned from a RpbGetResp in the RObject
-func (obj *RObject) setContent(resp *RpbGetResp) {
+// Sets the values that returned from a pb.RpbGetResp in the RObject
+func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 	// Check if there are siblings
 	if len(resp.Content) > 1 {
 		// Mark as conflict, set fields
@@ -218,7 +220,7 @@ func (obj *RObject) AddLink(link Link) bool {
 
 // Get an object
 func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, err error) {
-	req := &RpbGetReq{
+	req := &pb.RpbGetReq{
 		Bucket: []byte(b.name),
 		Key:    []byte(key),
 	}
@@ -236,7 +238,7 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 	if err != nil {
 		return nil, err
 	}
-	resp := &RpbGetResp{}
+	resp := &pb.RpbGetResp{}
 	err = b.client.response(conn, resp)
 	if err != nil {
 		return nil, err
@@ -254,7 +256,7 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 
 // Reload an object if it has changed (new Vclock)
 func (obj *RObject) Reload() (err error) {
-	req := &RpbGetReq{
+	req := &pb.RpbGetReq{
 		Bucket:     []byte(obj.Bucket.name),
 		Key:        []byte(obj.Key),
 		IfModified: obj.Vclock}
@@ -272,7 +274,7 @@ func (obj *RObject) Reload() (err error) {
 	if err != nil {
 		return err
 	}
-	resp := &RpbGetResp{}
+	resp := &pb.RpbGetResp{}
 	err = obj.Bucket.client.response(conn, resp)
 	if err != nil {
 		return err

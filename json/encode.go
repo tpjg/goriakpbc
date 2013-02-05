@@ -1,4 +1,4 @@
-package riak
+package json
 
 // This file is a minor customization of the original encoding/json package for use in goriakpbc
 
@@ -487,6 +487,8 @@ var (
 	encodeFieldsCache = make(map[reflect.Type][]encodeField)
 )
 
+var SkipTypes = make(map[reflect.Type]bool)
+
 // encodeFields returns a slice of encodeField for a given
 // struct type.
 func encodeFields(t reflect.Type) []encodeField {
@@ -517,13 +519,7 @@ func encodeFields(t reflect.Type) []encodeField {
 			continue
 		}
 		// Some special exceptions for riak - skip these fields!
-		if f.Type == reflect.TypeOf(Model{}) {
-			continue
-		}
-		if f.Type == reflect.TypeOf(One{}) {
-			continue
-		}
-		if f.Type == reflect.TypeOf(Many{}) {
+		if SkipTypes[f.Type] {
 			continue
 		}
 		var ef encodeField
