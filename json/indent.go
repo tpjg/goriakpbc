@@ -1,4 +1,4 @@
-package riak
+package json
 
 // This file is a minor customization of the original encoding/json package for use in goriakpbc
 

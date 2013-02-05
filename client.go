@@ -5,13 +5,15 @@ It implements a connection to Riak using protobuf.
 package riak
 
 import (
-	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"syscall"
 	"time"
+
+	"code.google.com/p/goprotobuf/proto"
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 /*
@@ -210,7 +212,7 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 	msgcode := msgbuf[4]
 	switch msgcode {
 	case messageCodes["RpbErrorResp"]:
-		errResp := &RpbErrorResp{}
+		errResp := &pb.RpbErrorResp{}
 		err = proto.Unmarshal(pbmsg, errResp)
 		if err == nil {
 			err = errors.New(string(errResp.Errmsg))
@@ -247,7 +249,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 	// Deserialize, by default the calling method should provide the expected RbpXXXResp
 	msgcode := msgbuf[4]
 	if msgcode == messageCodes["RpbMapRedResp"] {
-		partial := &RpbMapRedResp{}
+		partial := &pb.RpbMapRedResp{}
 		err = proto.Unmarshal(pbmsg, partial)
 		if err != nil {
 			return nil, err
@@ -260,7 +262,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 		}
 
 		for done == nil {
-			partial = &RpbMapRedResp{}
+			partial = &pb.RpbMapRedResp{}
 			// Read another response
 			msgbuf, err = c.read(conn, 5)
 			if err != nil {
@@ -288,7 +290,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 		response = resp
 		return
 	} else if msgcode == messageCodes["RpbErrorResp"] {
-		errResp := &RpbErrorResp{}
+		errResp := &pb.RpbErrorResp{}
 		err = proto.Unmarshal(pbmsg, errResp)
 		if err == nil {
 			err = errors.New(string(errResp.Errmsg))
@@ -303,11 +305,11 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 }
 
 // Deserializes the data from possibly multiple packets, 
-// currently only for RpbListKeysResp.
+// currently only for pb.RpbListKeysResp.
 func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 	defer c.releaseConn(conn)
 	var (
-		partial *RpbListKeysResp
+		partial *pb.RpbListKeysResp
 		msgcode byte
 	)
 
@@ -332,7 +334,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 		msgcode = msgbuf[4]
 
 		if msgcode == messageCodes["RpbListKeysResp"] {
-			partial = &RpbListKeysResp{}
+			partial = &pb.RpbListKeysResp{}
 			err = proto.Unmarshal(pbmsg, partial)
 			if err != nil {
 				return nil, err
@@ -344,7 +346,7 @@ func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 				break
 			}
 		} else if msgcode == messageCodes["RpbErrorResp"] {
-			errResp := &RpbErrorResp{}
+			errResp := &pb.RpbErrorResp{}
 			err = proto.Unmarshal(pbmsg, errResp)
 			if err == nil {
 				err = errors.New(string(errResp.Errmsg))
@@ -384,7 +386,7 @@ func (c *Client) Id() (id string, err error) {
 		return id, err
 	}
 	c.write(conn, msg)
-	resp := &RpbGetClientIdResp{}
+	resp := &pb.RpbGetClientIdResp{}
 	err = c.response(conn, resp)
 	if err == nil {
 		id = string(resp.ClientId)
@@ -394,7 +396,7 @@ func (c *Client) Id() (id string, err error) {
 
 // Set the client Id
 func (c *Client) SetId(id string) (err error) {
-	req := &RpbSetClientIdReq{ClientId: []byte(id)}
+	req := &pb.RpbSetClientIdReq{ClientId: []byte(id)}
 	err, conn := c.request(req, "RpbSetClientIdReq")
 	if err != nil {
 		return err
@@ -411,7 +413,7 @@ func (c *Client) ServerVersion() (node string, version string, err error) {
 		return node, version, err
 	}
 	c.write(conn, msg)
-	resp := &RpbGetServerInfoResp{}
+	resp := &pb.RpbGetServerInfoResp{}
 	err = c.response(conn, resp)
 	if err == nil {
 		node = string(resp.Node)

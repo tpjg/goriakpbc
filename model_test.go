@@ -1,7 +1,6 @@
 package riak
 
 import (
-	"fmt"
 	"github.com/bmizerany/assert"
 	"testing"
 	"time"
@@ -169,14 +168,10 @@ from the siblings, the largest FieldF and sets FieldB to true if any of the
 siblings have it set to true.
 */
 func (d *DocumentModel) Resolve(count int) (err error) {
-	fmt.Printf("Resolving DocumentModel = %v, with count = %v\n", d, count)
 	siblings := make([]DocumentModel, count)
 	err = d.GetSiblings(siblings)
 	if err != nil {
 		return err
-	}
-	for i, s := range siblings {
-		fmt.Printf("DocumentModel %v - %v\n", i, s)
 	}
 	d.FieldB = false
 	for _, s := range siblings {

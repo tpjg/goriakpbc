@@ -3,7 +3,6 @@ package riak
 import (
 	"fmt"
 	"github.com/bmizerany/assert"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -457,7 +456,6 @@ func TestRunConnectionPool(t *testing.T) {
 		return
 	}
 	// Preparations
-	fmt.Printf("Testing multiple simultaneous connections .")
 	client := setupConnections(t, 2)
 	assert.T(t, client != nil)
 	assert.T(t, client.conn_count == 2)
@@ -488,8 +486,6 @@ func TestRunConnectionPool(t *testing.T) {
 		mr, err := client.RunMapReduce(q)
 		assert.T(t, err == nil)
 		assert.T(t, len(mr) == 1)
-		fmt.Printf("1")
-		os.Stdout.Sync()
 		receiver <- 1
 	}()
 	// Sleep 100 milliseconds and then fetch a single value, send "2" after this fetch
@@ -498,8 +494,6 @@ func TestRunConnectionPool(t *testing.T) {
 		obj, err := bucket.Get("mrobj1")
 		assert.T(t, err == nil)
 		assert.T(t, obj != nil)
-		fmt.Printf("2")
-		os.Stdout.Sync()
 		receiver <- 2
 	}()
 	t1 := <-receiver
@@ -512,10 +506,7 @@ func TestRunConnectionPool(t *testing.T) {
 		obj, err := bucket.Get("mrobj1", R1)
 		assert.T(t, err == nil)
 		assert.T(t, obj != nil)
-		fmt.Printf(".")
-		os.Stdout.Sync()
 	}
-	fmt.Printf("\n")
 }
 
 func TestBrokenConnection(t *testing.T) {

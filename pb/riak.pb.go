@@ -2,7 +2,7 @@
 // source: riak.proto
 // DO NOT EDIT!
 
-package riak
+package pb
 
 import proto "code.google.com/p/goprotobuf/proto"
 import json "encoding/json"

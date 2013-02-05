@@ -2,6 +2,8 @@ package riak
 
 import (
 	"encoding/json"
+
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 // An object to build a MapReduce job similar to how the Ruby client can
@@ -80,7 +82,7 @@ func (mr *MapReduce) Run() (resp [][]byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	req := &RpbMapRedReq{
+	req := &pb.RpbMapRedReq{
 		Request:     query,
 		ContentType: []byte("application/json"),
 	}
@@ -97,7 +99,7 @@ func (mr *MapReduce) Run() (resp [][]byte, err error) {
 
 // Run a MapReduce query
 func (c *Client) RunMapReduce(query string) (resp [][]byte, err error) {
-	req := &RpbMapRedReq{
+	req := &pb.RpbMapRedReq{
 		Request:     []byte(query),
 		ContentType: []byte("application/json"),
 	}
