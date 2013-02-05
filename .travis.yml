@@ -4,4 +4,5 @@ services:
 install:
   - go get github.com/bmizerany/assert
   - go get code.google.com/p/goprotobuf/proto
+  - go get -d
 script: go test
