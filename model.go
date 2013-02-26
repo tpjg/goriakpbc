@@ -506,6 +506,12 @@ func (m *Model) Reload() (err error) {
 	return
 }
 
+// Return the object Vclock - this allows an application to detect whether Reload() 
+// loaded a newer version of the object
+func (m *Model) Vclock() (vclock []byte) {
+	return m.robject.Vclock
+}
+
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination

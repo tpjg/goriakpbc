@@ -311,10 +311,10 @@ func TestModelReload(t *testing.T) {
 	err = doc2.Save()
 	assert.T(t, err == nil)
 
-	vclock := string(doc.robject.Vclock)
+	vclock := string(doc.Vclock())
 	err = (&doc).Reload()
 	assert.T(t, err == nil)
-	assert.T(t, string(doc.robject.Vclock) != vclock)
+	assert.T(t, string(doc.Vclock()) != vclock)
 	assert.T(t, string(doc.robject.Vclock) == string(doc2.robject.Vclock))
 	assert.T(t, doc.FieldS == doc2.FieldS)
 	assert.T(t, doc.FieldF == doc2.FieldF)
