@@ -32,6 +32,11 @@ func (c *Client) Bucket(name string) (*Bucket, error) {
 	return bucket, nil
 }
 
+// Return the bucket name
+func (b *Bucket) Name() string {
+	return b.name
+}
+
 // Return the nval property of a bucket
 func (b *Bucket) NVal() uint32 {
 	return b.nval
