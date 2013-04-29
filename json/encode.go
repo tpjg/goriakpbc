@@ -56,8 +56,8 @@ import (
 // becomes a member of the object unless
 //   - the field's tag is a riak.Many, riak.One or riak.Model
 //
-// The object's default key string is the struct field name but can be 
-// specified in the struct field's tag value. 
+// The object's default key string is the struct field name but can be
+// specified in the struct field's tag value.
 //
 // The key name will be used if it's a non-empty string consisting of
 // only Unicode letters, digits, dollar signs, percent signs, hyphens,
@@ -536,7 +536,7 @@ func encodeFields(t reflect.Type) []encodeField {
 			if isValidTag(tv) {
 				ef.tag = tv
 			}
-			ef.omitEmpty = false
+			ef.omitEmpty = true
 			ef.quoted = false
 		}
 		fs = append(fs, ef)
