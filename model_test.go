@@ -154,6 +154,7 @@ func TestModelWithManyLinks(t *testing.T) {
 	err = client.Load("testmodel.go", "TestMany", &doc2)
 	assert.T(t, err == nil)
 	assert.T(t, len(doc2.Friends) == 2)
+	assert.T(t, doc2.Friends.Len() == 2)
 	for i, v := range doc2.Friends {
 		var f DocumentModel
 		err = v.Get(&f)

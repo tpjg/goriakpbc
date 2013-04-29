@@ -601,6 +601,11 @@ func (m *Many) Add(dest Resolver) (err error) {
 	return err
 }
 
+// Return the number of Links
+func (m *Many) Len() int {
+	return len(*m)
+}
+
 //TODO: create "Remove" for Many links
 
 func init() {
