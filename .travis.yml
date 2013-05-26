@@ -2,7 +2,9 @@ language: go
 services:
   - riak
 install:
-  - go get github.com/bmizerany/assert
-  - go get code.google.com/p/goprotobuf/proto
-  - go get -d
-script: go test
+  - mkdir -p $GOPATH/src/github.com
+  - mv $HOME/build/tpjg $GOPATH/src/github.com/
+  - cd $GOPATH/src/github.com/tpjg/goriakpbc
+  - go get -d -v ./... && go build -v ./...
+  - go get -v github.com/bmizerany/assert
+script: go test -i
