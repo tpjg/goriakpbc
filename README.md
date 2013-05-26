@@ -94,10 +94,10 @@ For example the following Ruby/Ripple class:
 can be mapped to the following Go struct:
 ```go
     type Device struct {
-        DownloadEnabled  bool    "download_enabled"
-        Ip               string  "ip"
-        Description      string  "description"
-        riak.Model
+        DownloadEnabled  bool    `riak:"download_enabled"`
+        Ip               string  `riak:"ip"`
+        Description      string  `riak:"description"`
+        riak.Model       `riak:"devices"`
     }
 ```
 Note that it is required to have an (anonymous) riak.Model field. If the riak.Model field is an anonymous field this has the benefit that the functions like "Save" or "SaveAs" can be called directly as in the example below.
@@ -107,7 +107,7 @@ To get an instantiated struct from Riak would then require only a call to the ri
 client := riak.New("127.0.0.1:8087")
 err := client.Connect()
 var dev Device 
-err = client.Load("devices", "abcdefghijklm", &dev)
+err = client.Load("", "abcdefghijklm", &dev)
 dev.Description = "something else"
 err = dev.SaveAs("newkey")
 ```
