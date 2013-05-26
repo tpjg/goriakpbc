@@ -498,9 +498,14 @@ func (d *decodeState) object(v reflect.Value) {
 			st := sv.Type()
 			for i := 0; i < sv.NumField(); i++ {
 				sf := st.Field(i)
-				// Handling of Tag is different for riak, not looking for a "json:"
-				// key/value string, using the Tag as a name directly (ef.tag)
-				tag := string(sf.Tag)
+				// Handling of Tag is different for riak, not looking for a "json:" but for "riak:" instead.
+				// (https://github.com/titanous was right after all, need to play nice and use the Go way)
+				// Falling back to using the Tag directly until all code is updated (DEPRECATED)
+				tag := sf.Tag.Get("riak")
+				//DEPRECATED: use tag directly if it appears not to have key/values.
+				if tag == "" && !strings.Contains(string(sf.Tag), `:"`) {
+					tag = string(sf.Tag)
+				}
 				if tag == "-" {
 					// Pretend this field doesn't exist.
 					continue

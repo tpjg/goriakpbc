@@ -30,10 +30,10 @@ For example the following Ruby/Ripple class:
 can be mapped to the following Go class:
 
 	type Device struct {
+		riak.Model       `riak:devices`
 		Download_enabled bool    `riak:"download_enabled"`
 		Ip               string  `riak:"ip"`
 		Description      string  `riak:"description"`
-		riak.Model
 	}
 
 Note that it is required to have a riak.Model field.
@@ -114,7 +114,9 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 }
 
 // Check if the passed destination is a pointer to a struct with riak.Model field
-func check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, err error) {
+// Returns the destination Value and Type (dv, dt) as well as the riak.Model field (rm)
+// and the bucketname (bn), which is derived from the tag of the riak.Model field.
+func check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect.Value, bn string, err error) {
 	dv = reflect.ValueOf(dest)
 	if dv.Kind() != reflect.Ptr || dv.IsNil() {
 		err = DestinationError
@@ -130,6 +132,7 @@ func check_dest(dest interface{}) (dv reflect.Value, dt reflect.Type, rm reflect
 	for i := 0; i < dt.NumField(); i++ {
 		dobj := dt.Field(i)
 		if dobj.Type.Kind() == reflect.Struct && dobj.Type == reflect.TypeOf(Model{}) {
+			bn = dt.Field(i).Tag.Get("riak")
 			rm = dv.Field(i) // Return the Model field value
 			return
 		}
@@ -165,7 +168,10 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links [
 		fv := dv.Field(i)
 		if ft.Type == reflect.TypeOf(One{}) {
 			var name string
-			if ft.Tag != "" {
+			if ft.Tag.Get("riak") != "" {
+				name = ft.Tag.Get("riak")
+			} else if string(ft.Tag) != "" && !strings.Contains(string(ft.Tag), `:"`) {
+				//DEPRECATED: use tag directly if it appears not to have key/values.
 				name = string(ft.Tag)
 			} else {
 				name = ft.Name
@@ -178,7 +184,10 @@ func (c *Client) mapData(dv reflect.Value, dt reflect.Type, data []byte, links [
 			}
 		} else if ft.Type == reflect.TypeOf(Many{}) {
 			var name string
-			if ft.Tag != "" {
+			if ft.Tag.Get("riak") != "" {
+				name = ft.Tag.Get("riak")
+			} else if string(ft.Tag) != "" && !strings.Contains(string(ft.Tag), `:"`) {
+				//DEPRECATED: use tag directly if it appears not to have key/values.
 				name = string(ft.Tag)
 			} else {
 				name = ft.Name
@@ -226,7 +235,7 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 	}
 	count = 0
 	// Double check the parent and get the Value and Type
-	dv, dt, _, err := check_dest(m.parent)
+	dv, dt, _, _, err := check_dest(m.parent)
 	if err != nil {
 		return err
 	}
@@ -244,23 +253,27 @@ func (m *Model) GetSiblings(dest interface{}) (err error) {
 }
 
 /*
-	The Load function retrieves the data from Riak and stores it in the struct
-	that is passed as destination. It stores some necessary information in the
-	riak.Model field so it can be used later in other (Save) operations.
+The Load function retrieves the data from Riak and stores it in the struct
+that is passed as destination. It stores some necessary information in the
+riak.Model field so it can be used later in other (Save) operations.
 
-	Unfortunately you also need to pass the bucketname as it is probably
-	different from the struct name.
+If the bucketname is empty ("") it'll be the default bucket, based on the 
+riak.Model tag.
 
-	Using the "Device" struct as an example:
+Using the "Device" struct as an example:
 
-	dev := &Device{}
-	err := client.Load("devices", "12345", dev)
+dev := &Device{}
+err := client.Load("devices", "12345", dev)
 */
 func (c *Client) Load(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
-	dv, dt, rm, err := check_dest(dest)
+	dv, dt, rm, bn, err := check_dest(dest)
 	if err != nil {
 		return err
+	}
+	// Use default bucket name if empty
+	if bucketname == "" {
+		bucketname = bn
 	}
 	// Fetch the object from Riak.
 	bucket, err := c.Bucket(bucketname)
@@ -307,12 +320,18 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the riak.Model field.
+If the bucketname is empty the default bucketname, based on the riak.Model tag 
+will be used.
 */
 func (c *Client) New(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
 	// Check destination
-	_, dt, rm, err := check_dest(dest)
+	_, dt, rm, bn, err := check_dest(dest)
 	if err != nil {
 		return err
+	}
+	// Use default bucket name if empty
+	if bucketname == "" {
+		bucketname = bn
 	}
 	// Fetch the object from Riak.
 	bucket, err := c.Bucket(bucketname)
@@ -342,7 +361,7 @@ func (c *Client) New(bucketname string, key string, dest Resolver, options ...ma
 // Creates a link to a given model
 func (c *Client) linkToModel(dest interface{}) (link Link, err error) {
 	// Check destination
-	_, _, rm, err := check_dest(dest)
+	_, _, rm, _, err := check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -363,7 +382,7 @@ func (c *Client) linkToModel(dest interface{}) (link Link, err error) {
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	// Check destination
-	dv, dt, rm, err := check_dest(dest)
+	dv, dt, rm, _, err := check_dest(dest)
 	if err != nil {
 		return err
 	}
@@ -386,7 +405,10 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 		ft := dt.Field(i)
 		fv := dv.Field(i)
 		var fieldname string
-		if ft.Tag != "" {
+		if ft.Tag.Get("riak") != "" {
+			fieldname = ft.Tag.Get("riak")
+		} else if string(ft.Tag) != "" && !strings.Contains(string(ft.Tag), `:"`) {
+			//DEPRECATED: use tag directly if it appears not to have key/values.
 			fieldname = string(ft.Tag)
 		} else {
 			fieldname = ft.Name
@@ -452,6 +474,33 @@ func (m *Model) getClient() (c *Client, err error) {
 	return m.robject.Bucket.client, nil
 }
 
+// Instantiate a new model, setting the necessary fields, like the client.
+// If key is not empty that key will be used, otherwise Riak will choose a key.
+// Options can be a bucketname (as a string) and a riak.Client. If no bucketname
+// is given, the default (based on the tag of the anonymous riak.Model field)
+// will be used. If no riak.Client is given, the default client will be used.
+func NewModel(key string, dest Resolver, options ...interface{}) error {
+	bucket := ""
+	var client *Client = defaultClient
+	if len(options) > 0 {
+		// Check if the first option is a string
+		if bucketoption, ok := options[0].(string); ok {
+			bucket = bucketoption
+			if len(options) > 1 {
+				if clientoption, ok := options[0].(*Client); ok {
+					client = clientoption
+				}
+			}
+		} else if clientoption, ok := options[0].(*Client); ok {
+			client = clientoption
+		}
+	}
+	if client == nil {
+		return errors.New("No (default) client connection")
+	}
+	return client.New(bucket, key, dest)
+}
+
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
 func (m *Model) SaveAs(newKey string) (err error) {
 	client, err := m.getClient()
@@ -493,7 +542,7 @@ func (m *Model) Reload() (err error) {
 			return m.parent.Resolve(count)
 		}
 		// Map the data onto the struct.
-		dv, dt, _, err := check_dest(m.parent)
+		dv, dt, _, _, err := check_dest(m.parent)
 		c, err := m.getClient()
 		if err != nil {
 			return err
@@ -506,7 +555,7 @@ func (m *Model) Reload() (err error) {
 	return
 }
 
-// Return the object Vclock - this allows an application to detect whether Reload() 
+// Return the object Vclock - this allows an application to detect whether Reload()
 // loaded a newer version of the object
 func (m *Model) Vclock() (vclock []byte) {
 	return m.robject.Vclock
@@ -515,7 +564,7 @@ func (m *Model) Vclock() (vclock []byte) {
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
-	_, _, rm, err := check_dest(dest)
+	_, _, rm, _, err := check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -543,7 +592,7 @@ func (m Model) Key() (key string) {
 // Set the Key value, note that this does not save the model, it only changes the data structure
 func (c *Client) SetKey(newKey string, dest interface{}) (err error) {
 	// Check destination
-	_, _, rm, err := check_dest(dest)
+	_, _, rm, _, err := check_dest(dest)
 	if err != nil {
 		return
 	}
@@ -575,7 +624,7 @@ func (o One) Link() (link Link) {
 
 // Set the link to a given Model (dest)
 func (o *One) Set(dest Resolver) (err error) {
-	_, _, _, err = check_dest(dest)
+	_, _, _, _, err = check_dest(dest)
 	if err == nil {
 		o.model = dest
 		o.link, err = o.client.linkToModel(dest)
@@ -592,7 +641,7 @@ func (o *One) Get(dest Resolver) (err error) {
 
 // Add a Link to the given Model (dest)
 func (m *Many) Add(dest Resolver) (err error) {
-	_, _, _, err = check_dest(dest)
+	_, _, _, _, err = check_dest(dest)
 	if err == nil {
 		o := One{model: dest}
 		o.link, err = o.client.linkToModel(dest)

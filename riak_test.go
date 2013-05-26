@@ -514,7 +514,7 @@ func testBrokenConnection(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
-	/* 
+	/*
 		Abuse direct access to underlying TCP connection, send something Riak
 		does not accept so it closes the connection on that end. This will result
 		in a few writes still succeeding, receiving an EOF and finally the write

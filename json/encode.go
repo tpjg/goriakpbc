@@ -526,9 +526,14 @@ func encodeFields(t reflect.Type) []encodeField {
 		ef.i = i
 		ef.tag = f.Name
 
-		// Handling of Tag is different for riak, not looking for a "json:"
-		// key/value string, using the Tag as a name directly (ef.tag)
-		tv := string(f.Tag)
+		// Handling of Tag is different for riak, not looking for a "json:" but for "riak:" instead.
+		// (https://github.com/titanous was right after all, need to play nice and use the Go way)
+		// Falling back to using the Tag directly until all code is updated (DEPRECATED)
+		tv := f.Tag.Get("riak")
+		//DEPRECATED: use tag directly if it appears not to have key/values.
+		if tv == "" && !strings.Contains(string(f.Tag), `:"`) {
+			tv = string(f.Tag)
+		}
 		if tv != "" {
 			if tv == "-" {
 				continue
