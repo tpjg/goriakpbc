@@ -2,6 +2,7 @@ language: go
 services:
   - riak
 install:
+  - cd $TRAVIS_BUILD_DIR
   - go get -d -v
   - go build -v
   - go get -v github.com/bmizerany/assert
