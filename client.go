@@ -36,7 +36,7 @@ type Client struct {
 	conns        chan *net.TCPConn
 }
 
-/* 
+/*
 Options for storing and retrieving data, only a few are defined, different
 values can be supplied by creating a map in the application, for example:
   bucket.Get("key", map[string]int{"r":2})
@@ -54,6 +54,27 @@ var (
 	BadNumberOfConnections = errors.New("Connection count <= 0")
 	BadResponseLength      = errors.New("Response length too short")
 )
+
+// Introduce a default client
+var defaultClient *Client = nil
+
+// Create the default client
+func ConnectClient(addr string) (err error) {
+	if defaultClient != nil {
+		defaultClient.Close()
+	}
+	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
+	return defaultClient.Connect()
+}
+
+// Create the default client to a pool
+func ConnectClientPool(addr string, count int) (err error) {
+	if defaultClient != nil {
+		defaultClient.Close()
+	}
+	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
+	return defaultClient.Connect()
+}
 
 // Returns a new Client connection
 func New(addr string) *Client {
@@ -225,7 +246,7 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 	return err
 }
 
-// Reponse deserializes the data from a MapReduce response and returns the data, 
+// Reponse deserializes the data from a MapReduce response and returns the data,
 // this can come from multiple response messages
 func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 	defer c.releaseConn(conn)
@@ -303,7 +324,7 @@ func (c *Client) mr_response(conn *net.TCPConn) (response [][]byte, err error) {
 	return
 }
 
-// Deserializes the data from possibly multiple packets, 
+// Deserializes the data from possibly multiple packets,
 // currently only for pb.RpbListKeysResp.
 func (c *Client) mp_response(conn *net.TCPConn) (response [][]byte, err error) {
 	defer c.releaseConn(conn)
