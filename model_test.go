@@ -7,10 +7,10 @@ import (
 )
 
 type DocumentModel struct {
-	FieldS string  "string_field"
-	FieldF float64 "float_field"
+	FieldS string  `riak:"string_field"`
+	FieldF float64 `riak:"float_field"`
 	FieldB bool
-	Model
+	Model  `riak:"testmodeldefault.go"`
 }
 
 func TestModel(t *testing.T) {
@@ -320,4 +320,21 @@ func TestModelReload(t *testing.T) {
 	assert.T(t, doc.FieldS == doc2.FieldS)
 	assert.T(t, doc.FieldF == doc2.FieldF)
 	assert.T(t, doc.FieldB == doc2.FieldB)
+}
+
+func TestModelNew(t *testing.T) {
+	err := ConnectClientPool("127.0.0.1:8087", 5)
+	assert.T(t, err == nil)
+
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err = NewModel("", &doc)
+	assert.T(t, err == nil)
+	assert.T(t, doc.Key() == "")
+	// Save the doc, now the key should be set
+	err = doc.Save()
+	assert.T(t, err == nil)
+	assert.T(t, doc.Key() != "")
+	assert.T(t, string(doc.Vclock()) != "")
+	// Verify that the default bucket was used
+	assert.T(t, doc.robject.Bucket.Name() == "testmodeldefault.go")
 }
