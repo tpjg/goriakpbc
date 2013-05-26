@@ -6,4 +6,5 @@ install:
   - go get -d -v
   - go build -v
   - go get -v github.com/bmizerany/assert
-script: go test -i
+  - go test -i
+script: go test
