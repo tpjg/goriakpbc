@@ -12,8 +12,8 @@ type Bucket struct {
 	allowMult bool
 }
 
-// Return a bucket
-func (c *Client) Bucket(name string) (*Bucket, error) {
+// Return a new bucket object
+func (c *Client) NewBucket(name string) (*Bucket, error) {
 	req := &pb.RpbGetBucketReq{
 		Bucket: []byte(name),
 	}
@@ -30,6 +30,11 @@ func (c *Client) Bucket(name string) (*Bucket, error) {
 	}
 	bucket := &Bucket{name: name, client: c, nval: *resp.Props.NVal, allowMult: *resp.Props.AllowMult}
 	return bucket, nil
+}
+
+// Return a new bucket object. DEPRECATED, use NewBucket instead.
+func (c *Client) Bucket(name string) (*Bucket, error) {
+	return c.NewBucket(name)
 }
 
 // Return the bucket name
@@ -110,6 +115,16 @@ func (b *Bucket) Delete(key string, options ...map[string]uint32) (err error) {
 		return err
 	}
 	return nil
+}
+
+// Delete directly from a bucket, without creating a bucket object first
+func (c *Client) DeleteFrom(bucketname string, key string, options ...map[string]uint32) (err error) {
+	var bucket *Bucket
+	bucket, err = c.Bucket(bucketname)
+	if err != nil {
+		return
+	}
+	return bucket.Delete(key, options...)
 }
 
 // Create a new RObject

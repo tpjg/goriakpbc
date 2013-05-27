@@ -254,6 +254,16 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 	return obj, nil
 }
 
+// Get directly from a bucket, without creating a bucket first
+func (c *Client) GetFrom(bucketname string, key string, options ...map[string]uint32) (obj *RObject, err error) {
+	var bucket *Bucket
+	bucket, err = defaultClient.Bucket(bucketname)
+	if err != nil {
+		return
+	}
+	return bucket.Get(key, options...)
+}
+
 // Reload an object if it has changed (new Vclock)
 func (obj *RObject) Reload() (err error) {
 	req := &pb.RpbGetReq{

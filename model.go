@@ -60,7 +60,6 @@ var (
 	ModelDoesNotMatch         = errors.New("Warning: struct name does not match _type in Riak")
 	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
 	NoSiblingData             = errors.New("No non-empty sibling data")
-	NoDefaultClientConnection = errors.New("No (default) client connection")
 )
 
 /*
