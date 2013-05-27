@@ -128,12 +128,26 @@ func (c *Client) DeleteFrom(bucketname string, key string, options ...map[string
 }
 
 // Create a new RObject
-func (b *Bucket) New(key string, options ...map[string]uint32) *RObject {
+func (b *Bucket) NewObject(key string, options ...map[string]uint32) *RObject {
 	obj := &RObject{Key: key, Bucket: b,
 		Links: make([]Link, 0),
 		Meta:  make(map[string]string), Indexes: make(map[string]string),
 		Options: options}
 	return obj
+}
+
+// Create a new RObject. DEPRECATED, use NewObject instead
+func (b *Bucket) New(key string, options ...map[string]uint32) *RObject {
+	return b.NewObject(key, options...)
+}
+
+// Create a new RObject in a bucket directly, without creating a bucket object first
+func (c *Client) NewObjectIn(bucketname string, key string, options ...map[string]uint32) (*RObject, error) {
+	bucket, err := c.Bucket(bucketname)
+	if err != nil {
+		return nil, err
+	}
+	return bucket.NewObject(key, options...), nil
 }
 
 // Test if an object exists
@@ -165,6 +179,15 @@ func (b *Bucket) Exists(key string, options ...map[string]uint32) (exists bool, 
 		return false, err
 	}
 	return len(resp.Content) != 0, nil
+}
+
+// Test if an object exists in a bucket directly, without creating a bucket object first
+func (c *Client) ExistsIn(bucketname string, key string, options ...map[string]uint32) (exists bool, err error) {
+	bucket, err := c.Bucket(bucketname)
+	if err != nil {
+		return false, err
+	}
+	return bucket.Exists(key, options...)
 }
 
 // Return a list of keys using the index for a single key

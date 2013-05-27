@@ -15,14 +15,13 @@ import (
 )
 
 func main() {
-	client := riak.New("127.0.0.1:8087")
-	err := client.Connect()
+	err := riak.ConnectClient("127.0.0.1:8087")
 	if err != nil {
 		fmt.Println("Cannot connect, is Riak running?")
 		return
 	}
 
-	bucket, _ := client.Bucket("tstriak")
+	bucket, _ := riak.NewBucket("tstriak")
 	obj := bucket.New("tstobj")
 	obj.ContentType = "application/json"
 	obj.Data = []byte("{'field':'value'}")
@@ -47,7 +46,7 @@ Secondary indexes are supported and can be queried for equality using IndexQuery
 
 ```go
 
-obj, _ := bucket.New("some_key")
+obj, _ := bucket.NewObject("some_key")
 obj.ContentType = "text/plain"
 obj.Data = []byte("testing indexes")
 obj.Indexes["test_int"] = strconv.Itoa(123)
@@ -68,7 +67,7 @@ func (c *Client) RunMapReduce(query string) (resp [][]byte, err error)
 
 And MapReduce queries can be build similar to how the MapReduce class from the Ruby riak-client works:
 ```go
-mr := client.MapReduce()
+mr := riak.NewMapReduce()
 mr.Add("bucket", "key")
 mr.LinkBucket("otherbucket", false)
 mr.Map("function(v) {return [JSON.parse(v.values[0].data)];}", true)
@@ -104,10 +103,9 @@ Note that it is required to have an (anonymous) riak.Model field. If the riak.Mo
 
 To get an instantiated struct from Riak would then require only a call to the riak.Client "Load" function, and to store it call "Save" or "SaveAs":
 ```go
-client := riak.New("127.0.0.1:8087")
-err := client.Connect()
+err := riak.ConnectClient("127.0.0.1:8087")
 var dev Device 
-err = client.Load("", "abcdefghijklm", &dev)
+err = riak.LoadModel("abcdefghijklm", &dev)
 dev.Description = "something else"
 err = dev.SaveAs("newkey")
 ```
@@ -115,4 +113,3 @@ err = dev.SaveAs("newkey")
 ### Licensing
 
 goriakpbc is distributed under the Apache license, see `LICENSE.txt` file or http://www.apache.org/licenses/LICENSE-2.0 for details. The model_json_*.go files are a copy from the original Go distribution with minor changes and are governed by a BSD-style license, see `LICENSE.go.txt`.
-

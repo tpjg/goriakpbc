@@ -109,3 +109,19 @@ func DeleteFrom(bucketname string, key string, options ...map[string]uint32) (er
 	}
 	return defaultClient.DeleteFrom(bucketname, key, options...)
 }
+
+// Create a new RObject in a bucket directly, without creating a bucket object first
+func NewObjectIn(bucketname string, key string, options ...map[string]uint32) (*RObject, error) {
+	if defaultClient == nil {
+		return nil, NoDefaultClientConnection
+	}
+	return defaultClient.NewObjectIn(bucketname, key, options...)
+}
+
+// Test if an object exists in a bucket directly, without creating a bucket object first
+func ExistsIn(bucketname string, key string, options ...map[string]uint32) (exists bool, err error) {
+	if defaultClient == nil {
+		return false, NoDefaultClientConnection
+	}
+	return defaultClient.ExistsIn(bucketname, key, options...)
+}

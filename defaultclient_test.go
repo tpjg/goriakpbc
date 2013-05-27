@@ -128,3 +128,20 @@ func TestDefaultMapReduce(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
 }
+
+func TestDefaultNewObjectAndExistsIn(t *testing.T) {
+	setupDefaultConnection(t)
+	obj, err := NewObjectIn("client_test.go", "directobj")
+	assert.T(t, err == nil)
+	assert.T(t, obj != nil)
+	obj.ContentType = "text/plain"
+	obj.Data = []byte("somedata")
+	err = obj.Store()
+	assert.T(t, err == nil)
+	ex, err := ExistsIn("client_test.go", "directobj")
+	assert.T(t, ex == true)
+	assert.T(t, err == nil)
+	// Cleanup
+	err = DeleteFrom("client_test.go", "directobj")
+	assert.T(t, err == nil)
+}
