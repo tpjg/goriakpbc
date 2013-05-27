@@ -55,35 +55,24 @@ var (
 	BadResponseLength      = errors.New("Response length too short")
 )
 
-// Introduce a default client
-var defaultClient *Client = nil
-
-// Create the default client
-func ConnectClient(addr string) (err error) {
-	if defaultClient != nil {
-		defaultClient.Close()
-	}
-	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
-	return defaultClient.Connect()
-}
-
-// Create the default client to a pool
-func ConnectClientPool(addr string, count int) (err error) {
-	if defaultClient != nil {
-		defaultClient.Close()
-	}
-	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
-	return defaultClient.Connect()
-}
-
 // Returns a new Client connection
-func New(addr string) *Client {
+func NewClient(addr string) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
 }
 
+// Returns a new Client connection. DEPRECATED, use NewClient instead
+func New(addr string) *Client {
+	return NewClient(addr)
+}
+
 // Returns a new Client with multiple connections to Riak
-func NewPool(addr string, count int) *Client {
+func NewClientPool(addr string, count int) *Client {
 	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
+}
+
+// Returns a new Client with multiple connections to Riak. DEPRECATED, use NewClientPool instead
+func NewPool(addr string, count int) *Client {
+	return NewClientPool(addr, count)
 }
 
 // Connects to a Riak server.
