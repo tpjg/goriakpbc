@@ -60,6 +60,7 @@ var (
 	ModelDoesNotMatch         = errors.New("Warning: struct name does not match _type in Riak")
 	ModelNotNew               = errors.New("Destination struct already has an instantiated riak.Model (this struct is probably not new)")
 	NoSiblingData             = errors.New("No non-empty sibling data")
+	NoDefaultClientConnection = errors.New("No (default) client connection")
 )
 
 /*
@@ -257,7 +258,7 @@ The Load function retrieves the data from Riak and stores it in the struct
 that is passed as destination. It stores some necessary information in the
 riak.Model field so it can be used later in other (Save) operations.
 
-If the bucketname is empty ("") it'll be the default bucket, based on the 
+If the bucketname is empty ("") it'll be the default bucket, based on the
 riak.Model tag.
 
 Using the "Device" struct as an example:
@@ -320,7 +321,7 @@ func (c *Client) Load(bucketname string, key string, dest Resolver, options ...m
 Create a new Document Model, passing in the bucketname and key. The key can be
 empty in which case Riak will pick a key. The destination must be a pointer to
 a struct that has the riak.Model field.
-If the bucketname is empty the default bucketname, based on the riak.Model tag 
+If the bucketname is empty the default bucketname, based on the riak.Model tag
 will be used.
 */
 func (c *Client) New(bucketname string, key string, dest Resolver, options ...map[string]uint32) (err error) {
@@ -474,31 +475,22 @@ func (m *Model) getClient() (c *Client, err error) {
 	return m.robject.Bucket.client, nil
 }
 
-// Instantiate a new model, setting the necessary fields, like the client.
+// Instantiate a new model (using the default client), setting the necessary fields, like the client.
 // If key is not empty that key will be used, otherwise Riak will choose a key.
-// Options can be a bucketname (as a string) and a riak.Client. If no bucketname
-// is given, the default (based on the tag of the anonymous riak.Model field)
-// will be used. If no riak.Client is given, the default client will be used.
-func NewModel(key string, dest Resolver, options ...interface{}) error {
-	bucket := ""
-	var client *Client = defaultClient
-	if len(options) > 0 {
-		// Check if the first option is a string
-		if bucketoption, ok := options[0].(string); ok {
-			bucket = bucketoption
-			if len(options) > 1 {
-				if clientoption, ok := options[0].(*Client); ok {
-					client = clientoption
-				}
-			}
-		} else if clientoption, ok := options[0].(*Client); ok {
-			client = clientoption
-		}
+func NewModel(key string, dest Resolver, options ...map[string]uint32) (err error) {
+	if defaultClient == nil {
+		return NoDefaultClientConnection
 	}
-	if client == nil {
-		return errors.New("No (default) client connection")
+	return defaultClient.New("", key, dest, options...)
+}
+
+// Instantiate a new model from a given bucket instead of from the default bucket
+// defined in the Model's definition
+func NewModelFrom(bucketname, key string, dest Resolver, options ...map[string]uint32) (err error) {
+	if defaultClient == nil {
+		return NoDefaultClientConnection
 	}
-	return client.New(bucket, key, dest)
+	return defaultClient.New(bucketname, key, dest, options...)
 }
 
 // Save a Document Model to Riak under a new key, if empty a Key will be choosen by Riak
