@@ -557,4 +557,14 @@ func TestBadConnection(t *testing.T) {
 	assert.T(t, node == "")
 	assert.T(t, version == "")
 
+	// Same for a dedicated, rather then the shared client
+	c := NewClient("1.does/not/resolve::at_all")
+	assert.T(t, c != nil)
+	err = c.Connect()
+	assert.T(t, err != nil) // cannot be resolved
+	// Bad number of connections
+	c = NewClientPool("127.0.0.1:8087", -5)
+	assert.T(t, c != nil)
+	err = c.Connect()
+	assert.T(t, err != nil) // cannot have negative number of connections
 }
