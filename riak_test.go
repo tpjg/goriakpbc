@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
+const (
+	riakhost = "127.0.0.1:8087"
+)
+
 func setupConnection(t *testing.T) (client *Client) {
-	client = New("127.0.0.1:8087")
+	client = New(riakhost)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -19,7 +23,7 @@ func setupConnection(t *testing.T) (client *Client) {
 }
 
 func setupConnections(t *testing.T, count int) (client *Client) {
-	client = NewPool("127.0.0.1:8087", count)
+	client = NewPool(riakhost, count)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -38,7 +42,7 @@ func TestPing(t *testing.T) {
 	assert.T(t, client.Ping() == nil)
 }
 
-func TestGetServerVersion(t *testing.T) {
+func TestGetServerVersionAndId(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -48,6 +52,26 @@ func TestGetServerVersion(t *testing.T) {
 	assert.T(t, response != "")
 
 	t.Logf("Riak server : %s with version %s\n", node, response)
+
+	// Test the same with the default client
+	err = ConnectClient(riakhost)
+	assert.T(t, err == nil)
+	n2, r2, err := ServerVersion()
+	assert.T(t, err == nil)
+	assert.T(t, node == n2)
+	assert.T(t, response == r2)
+
+	// Test Id functions
+	err = client.SetId("MYID123")
+	assert.T(t, err == nil)
+	err = SetId("MYID456")
+	assert.T(t, err == nil)
+
+	id, err := client.Id()
+	assert.T(t, err == nil)
+	id2, err := Id()
+	assert.T(t, err == nil)
+	assert.T(t, id != id2)
 }
 
 func TestStoreObject(t *testing.T) {
@@ -93,7 +117,7 @@ func TestGetAndDeleteObject(t *testing.T) {
 			t.Logf("obj data : %s\n", string(obj.Data))
 		}
 	*/
-	err = bucket.Delete("abc")
+	err = bucket.Delete("abc", R1, PR1, W1, DW1, PW1)
 	assert.T(t, err == nil)
 }
 
@@ -563,7 +587,7 @@ func TestBadConnection(t *testing.T) {
 	err = c.Connect()
 	assert.T(t, err != nil) // cannot be resolved
 	// Bad number of connections
-	c = NewClientPool("127.0.0.1:8087", -5)
+	c = NewClientPool(riakhost, -5)
 	assert.T(t, c != nil)
 	err = c.Connect()
 	assert.T(t, err != nil) // cannot have negative number of connections
@@ -571,4 +595,29 @@ func TestBadConnection(t *testing.T) {
 	// Check for no panic on double Close()
 	c.Close()
 	c.Close()
+}
+
+func TestDefaultClientNotInitialized(t *testing.T) {
+	// Check what happens with some calls if the defaultClient is not initialized
+	// Basically this just makes sure there is no panic ...
+	defaultClient.Close()
+	defaultClient = nil
+
+	node, version, err := ServerVersion()
+	assert.T(t, err != nil)
+	assert.T(t, node == "")
+	assert.T(t, version == "")
+
+	_, err = RunMapReduce("no query")
+	assert.T(t, err != nil)
+
+	_, err = GetFrom("bucketname", "key")
+	assert.T(t, err != nil)
+
+	_, err = Id()
+	assert.T(t, err != nil)
+
+	err = LoadModel("key", nil)
+	assert.T(t, err != nil)
+
 }

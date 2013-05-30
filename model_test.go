@@ -53,6 +53,10 @@ func TestModel(t *testing.T) {
 	key, err = client.Key(&doc2)
 	assert.T(t, err == nil)
 	assert.T(t, key == "newTestModelKey")
+	// Test setting it
+	err = doc2.SetKey("newKeyAgain")
+	assert.T(t, err == nil)
+	assert.T(t, doc2.Key() == "newKeyAgain")
 
 	// Test Delete(), so test if the cleanup worked
 	doc3 := DocumentModel{}
@@ -475,6 +479,7 @@ func TestBrokenModels(t *testing.T) {
 	err = LoadModelFrom("brokenmodels", "brokenmodel", &doc)
 	assert.T(t, err != nil)
 	assert.T(t, strings.Contains(err.Error(), "cannot unmarshal"))
+	assert.T(t, IsWarning(err))
 
 	// Cleanup the test object
 	err = obj.Destroy()
@@ -486,6 +491,9 @@ func TestBrokenModels(t *testing.T) {
 	// Try to set a key on a model that is not initialized
 	a := A{}
 	err = defaultClient.SetKey("somekey", &a)
+	assert.T(t, err == DestinationNotInitialized)
+	// Try again using the Model direct
+	err = a.SetKey("somekey")
 	assert.T(t, err == DestinationNotInitialized)
 }
 
