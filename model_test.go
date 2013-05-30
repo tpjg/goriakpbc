@@ -1,7 +1,9 @@
 package riak
 
 import (
+	"errors"
 	"github.com/bmizerany/assert"
+	"strings"
 	"testing"
 	"time"
 )
@@ -344,10 +346,10 @@ func TestClientSaveAndLoad(t *testing.T) {
 	assert.T(t, client != nil)
 
 	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
-	err := client.NewModel("clientsavetest", &doc)
+	err := client.NewModel("willbeoverwrittenbySaveAs", &doc)
 	assert.T(t, err == nil)
 
-	err = client.Save(&doc)
+	err = client.SaveAs("clientsavetest", &doc)
 	assert.T(t, err == nil)
 
 	err = client.LoadModel("clientsavetest", &doc)
@@ -355,4 +357,35 @@ func TestClientSaveAndLoad(t *testing.T) {
 
 	err = doc.Delete()
 	assert.T(t, err == nil)
+}
+
+type A struct {
+	Model
+	Err int
+}
+
+func (*A) MarshalJSON() ([]byte, error) {
+	return []byte{}, errors.New("Deliberate JSON Marshalling error")
+}
+
+func TestErrorCatching(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// First test by supplying something that is not even a pointer to a struct
+	err := client.Save(nil)
+	assert.T(t, err != nil)
+
+	// Test by supplying a model that is not initialized
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err = client.SaveAs("clientsavetest", &doc)
+	assert.T(t, err == DestinationNotInitialized)
+
+	// Create a model that cannot be marshalled to JSON (see helpers above)
+	a := A{Err: 1}
+	err = client.NewModel("newKey", &a)
+	assert.T(t, err == nil) // this should still work
+	err = client.SaveAs("newKey", &a)
+	assert.T(t, err != nil) // but marshalling should fail
+	assert.T(t, strings.Contains(err.Error(), "Deliberate"))
 }
