@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
+const (
+	riakhost = "127.0.0.1:8087"
+)
+
 func setupConnection(t *testing.T) (client *Client) {
-	client = New("127.0.0.1:8087")
+	client = New(riakhost)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -19,7 +23,7 @@ func setupConnection(t *testing.T) (client *Client) {
 }
 
 func setupConnections(t *testing.T, count int) (client *Client) {
-	client = NewPool("127.0.0.1:8087", count)
+	client = NewPool(riakhost, count)
 	err := client.Connect()
 	assert.T(t, client != nil)
 	assert.T(t, err == nil)
@@ -38,7 +42,7 @@ func TestPing(t *testing.T) {
 	assert.T(t, client.Ping() == nil)
 }
 
-func TestGetServerVersion(t *testing.T) {
+func TestGetServerVersionAndId(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -48,6 +52,26 @@ func TestGetServerVersion(t *testing.T) {
 	assert.T(t, response != "")
 
 	t.Logf("Riak server : %s with version %s\n", node, response)
+
+	// Test the same with the default client
+	err = ConnectClient(riakhost)
+	assert.T(t, err == nil)
+	n2, r2, err := ServerVersion()
+	assert.T(t, err == nil)
+	assert.T(t, node == n2)
+	assert.T(t, response == r2)
+
+	// Test Id functions
+	err = client.SetId("MYID123")
+	assert.T(t, err == nil)
+	err = SetId("MYID456")
+	assert.T(t, err == nil)
+
+	id, err := client.Id()
+	assert.T(t, err == nil)
+	id2, err := Id()
+	assert.T(t, err == nil)
+	assert.T(t, id != id2)
 }
 
 func TestStoreObject(t *testing.T) {
@@ -56,7 +80,7 @@ func TestStoreObject(t *testing.T) {
 
 	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abc", PW1, DW1)
+	obj := bucket.New("abc", PW1, DW1, W1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("some more data")
@@ -93,7 +117,7 @@ func TestGetAndDeleteObject(t *testing.T) {
 			t.Logf("obj data : %s\n", string(obj.Data))
 		}
 	*/
-	err = bucket.Delete("abc")
+	err = bucket.Delete("abc", R1, PR1, W1, DW1, PW1)
 	assert.T(t, err == nil)
 }
 
@@ -106,17 +130,31 @@ func TestObjectsWithSiblings(t *testing.T) {
 	err := bucket.SetAllowMult(true)
 	assert.T(t, err == nil)
 
+	// Create a target so links can also be tested, include some riak store/read options
+	target, err := client.NewObjectIn("client_test.go", "targetkey", R1, PR1, W1, DW1, PW1)
+	assert.T(t, err == nil)
+	target.ContentType = "text/plain"
+	target.Data = []byte("data")
+	err = target.Store()
+	assert.T(t, err == nil)
+
 	// Create an object with two siblings
 	_ = bucket.Delete("def")
 	obj := bucket.New("def")
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 1")
+	obj.Meta["mymeta"] = "meta1"
+	obj.Indexes["myindex_bin"] = "index1"
+	obj.LinkTo(target, "mytag")
+
 	err = obj.Store()
 	assert.T(t, err == nil)
 
 	obj = bucket.New("def")
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 2")
+	obj.Meta["mymeta"] = "meta2"
+	obj.Indexes["myindex_bin"] = "index2"
 	err = obj.Store()
 	assert.T(t, err == nil)
 
@@ -128,6 +166,9 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, len(obj.Siblings[0].Data) > 0)
 	assert.T(t, len(obj.Siblings[1].Data) > 0)
 	assert.T(t, string(obj.Siblings[0].Data) != string(obj.Siblings[1].Data))
+	assert.T(t, obj.Siblings[0].Meta["mymeta"] != obj.Siblings[1].Meta["mymeta"])
+	assert.T(t, obj.Siblings[0].Indexes["myindex_bin"] != obj.Siblings[1].Indexes["myindex_bin"])
+	assert.T(t, len(obj.Siblings[0].Links) != len(obj.Siblings[1].Links))
 
 	// Cleanup
 	err = obj.Destroy()
@@ -135,6 +176,9 @@ func TestObjectsWithSiblings(t *testing.T) {
 	err = bucket.SetAllowMult(false)
 	assert.T(t, err == nil)
 	_ = bucket.Delete("def")
+
+	err = target.Destroy()
+	assert.T(t, err == nil)
 }
 
 func TestObjectReload(t *testing.T) {
@@ -145,7 +189,7 @@ func TestObjectReload(t *testing.T) {
 	assert.T(t, bucket != nil)
 
 	// Create an object
-	obj := bucket.New("ghi")
+	obj := bucket.NewObject("ghi", R1, PR1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("test1")
@@ -179,7 +223,7 @@ func TestExists(t *testing.T) {
 	assert.T(t, bucket != nil)
 
 	// Check for a non-existing key
-	e, err := bucket.Exists("alskgqwioetuioweqadfh")
+	e, err := bucket.Exists("alskgqwioetuioweqadfh", R1, PR1)
 	assert.T(t, err == nil)
 	assert.T(t, e == false)
 
@@ -509,38 +553,71 @@ func TestRunConnectionPool(t *testing.T) {
 	}
 }
 
-// Seems Riak 1.3 is reacting different and this does not succeed.
-func testBrokenConnection(t *testing.T) {
+func TestBucketProperties(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
-
-	/*
-		Abuse direct access to underlying TCP connection, send something Riak
-		does not accept so it closes the connection on that end. This will result
-		in a few writes still succeeding, receiving an EOF and finally the write
-		failing with a broken pipe message.
-	*/
-	t.Logf("Testing a broken connection to Riak ...")
-	cerr, conn := client.getConn()
-	assert.T(t, cerr == nil)
-	msg := []byte{250, 0, 0, 1, 250, 250}
-	n, cerr := conn.Write(msg)
-	t.Logf("%v bytes written - err=%v\n", n, cerr)
-	client.releaseConn(conn)
-
-	bucket, cerr := client.Bucket("client_test.go")
-	t.Logf("1: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("2: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("3: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test_props.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abcdefghijk", PW1, DW1)
-	assert.T(t, obj != nil)
-	obj.ContentType = "text/plain"
-	obj.Data = []byte("some more data")
-	err := obj.Store()
+
+	err := bucket.SetNVal(3)
 	assert.T(t, err == nil)
-	assert.T(t, obj.Vclock != nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+
+	bucket, _ = client.Bucket("client_test_props.go")
+	assert.T(t, bucket != nil)
+
+	assert.T(t, bucket.NVal() == 3)
+	assert.T(t, bucket.AllowMult() == true)
+}
+
+func TestBadConnection(t *testing.T) {
+	// Tests for a connection that cannot be established, is this caught correctly?
+	err := ConnectClient("127.0.0.1:8088") // connecting to port 8088 should not work ... (and return fast)
+	assert.T(t, err != nil)
+
+	node, version, err := ServerVersion()
+	assert.T(t, err != nil)
+	assert.T(t, node == "")
+	assert.T(t, version == "")
+
+	// Same for a dedicated, rather then the shared client
+	c := NewClient("1.does/not/resolve::at_all")
+	assert.T(t, c != nil)
+	err = c.Connect()
+	assert.T(t, err != nil) // cannot be resolved
+	// Bad number of connections
+	c = NewClientPool(riakhost, -5)
+	assert.T(t, c != nil)
+	err = c.Connect()
+	assert.T(t, err != nil) // cannot have negative number of connections
+
+	// Check for no panic on double Close()
+	c.Close()
+	c.Close()
+}
+
+func TestDefaultClientNotInitialized(t *testing.T) {
+	// Check what happens with some calls if the defaultClient is not initialized
+	// Basically this just makes sure there is no panic ...
+	defaultClient.Close()
+	defaultClient = nil
+
+	node, version, err := ServerVersion()
+	assert.T(t, err != nil)
+	assert.T(t, node == "")
+	assert.T(t, version == "")
+
+	_, err = RunMapReduce("no query")
+	assert.T(t, err != nil)
+
+	_, err = GetFrom("bucketname", "key")
+	assert.T(t, err != nil)
+
+	_, err = Id()
+	assert.T(t, err != nil)
+
+	err = LoadModel("key", nil)
+	assert.T(t, err != nil)
+
 }

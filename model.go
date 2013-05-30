@@ -467,7 +467,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	//fmt.Printf("Saving data for %v as %v\n", dt.Name(), string(data))
 	model.robject.Data = data
 	model.robject.ContentType = "application/json"
-	if newKey != "±___unchanged___±" {
+	if newKey != "" {
 		model.robject.Key = newKey
 	}
 	// Store the RObject in Riak
@@ -478,7 +478,7 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 
 // Save a Document Model to Riak
 func (c *Client) Save(dest Resolver) (err error) {
-	return c.SaveAs("±___unchanged___±", dest)
+	return c.SaveAs("", dest)
 }
 
 // Get the client from a given model
@@ -506,7 +506,7 @@ func (m *Model) SaveAs(newKey string) (err error) {
 
 // Save a Document Model to Riak
 func (m *Model) Save() (err error) {
-	return m.SaveAs("±___unchanged___±")
+	return m.SaveAs("")
 }
 
 // Delete a Document Model

@@ -14,6 +14,9 @@ type Bucket struct {
 
 // Return a new bucket object
 func (c *Client) NewBucket(name string) (*Bucket, error) {
+	if name == "" {
+		return nil, NoBucketName
+	}
 	req := &pb.RpbGetBucketReq{
 		Bucket: []byte(name),
 	}

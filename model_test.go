@@ -1,7 +1,9 @@
 package riak
 
 import (
+	"errors"
 	"github.com/bmizerany/assert"
+	"strings"
 	"testing"
 	"time"
 )
@@ -51,6 +53,10 @@ func TestModel(t *testing.T) {
 	key, err = client.Key(&doc2)
 	assert.T(t, err == nil)
 	assert.T(t, key == "newTestModelKey")
+	// Test setting it
+	err = doc2.SetKey("newKeyAgain")
+	assert.T(t, err == nil)
+	assert.T(t, doc2.Key() == "newKeyAgain")
 
 	// Test Delete(), so test if the cleanup worked
 	doc3 := DocumentModel{}
@@ -228,9 +234,54 @@ func TestConflictingModel(t *testing.T) {
 	assert.T(t, doc3.FieldF == doc2.FieldF) // doc2 has larger FieldF
 	assert.T(t, doc3.FieldB == doc.FieldB)  // doc has FieldB set to true
 
+	// Now add another sibling, re-load it and check
+	doc2b := DocumentModel{FieldS: "longer_text-evenlonger", FieldF: 1.8, FieldB: false}
+	err = client.New("testconflict.go", "TestModelKey", &doc2b)
+	assert.T(t, err == nil)
+	err = doc2b.Save()
+	assert.T(t, err == nil)
+	//Reload
+	err = doc3.Reload()
+	assert.T(t, err == nil)
+	assert.T(t, doc3.FieldS == doc2b.FieldS) // doc2b has longest FieldS
+	assert.T(t, doc3.FieldF == doc2b.FieldF) // doc2b has largest FieldF
+	assert.T(t, doc3.FieldB == doc.FieldB)   // doc has FieldB set to true
+
 	// Cleanup
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
+}
+
+func TestConflictingModelThatHasNoResolver(t *testing.T) {
+	// This should throw an error when it has to Resolve since it didn't
+	// override the default
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a bucket where siblings are allowed
+	bucket, err := client.Bucket("testconflict.go")
+	assert.T(t, err == nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+
+	t1 := DMTime{FieldS: "1"}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &t1)
+	assert.T(t, err == nil)
+	err = t1.Save()
+	assert.T(t, err == nil)
+
+	// Create with the same key
+	t2 := DMTime{FieldS: "2"}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &t2)
+	assert.T(t, err == nil)
+	err = t2.Save()
+	assert.T(t, err == nil)
+
+	// Now load to test conflicts, should return error ResolveNotImplemented
+	t3 := DMTime{}
+	err = client.LoadModelFrom("testconflict.go", "testconflictres", &t3)
+	assert.T(t, err == ResolveNotImplemented)
 }
 
 type DMTime struct {
@@ -337,4 +388,133 @@ func TestModelNew(t *testing.T) {
 	assert.T(t, string(doc.Vclock()) != "")
 	// Verify that the default bucket was used
 	assert.T(t, doc.robject.Bucket.Name() == "testmodeldefault.go")
+}
+
+func TestClientSaveAndLoad(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err := client.NewModel("willbeoverwrittenbySaveAs", &doc)
+	assert.T(t, err == nil)
+
+	err = client.SaveAs("clientsavetest", &doc)
+	assert.T(t, err == nil)
+
+	err = client.LoadModel("clientsavetest", &doc)
+	assert.T(t, err == nil)
+
+	err = doc.Delete()
+	assert.T(t, err == nil)
+}
+
+type A struct {
+	Model
+	Err int
+}
+
+func (*A) MarshalJSON() ([]byte, error) {
+	return []byte{}, errors.New("Deliberate JSON Marshalling error")
+}
+
+func TestErrorCatching(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// First test by supplying something that is not even a pointer to a struct
+	err := client.Save(nil)
+	assert.T(t, err != nil)
+
+	// Test by supplying a model that is not initialized
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err = client.SaveAs("clientsavetest", &doc)
+	assert.T(t, err == DestinationNotInitialized)
+
+	// Create a model that cannot be marshalled to JSON (see helpers above)
+	a := A{Err: 1}
+	err = client.NewModelIn("abucket", "newKey", &a)
+	assert.T(t, err == nil) // this should still work
+	err = client.SaveAs("newKey", &a)
+	assert.T(t, err != nil) // but marshalling should fail
+	assert.T(t, strings.Contains(err.Error(), "Deliberate"))
+
+	// Same for Loading instead of Saving:
+	// First test by supplying something that is not even a pointer to a struct
+	err = client.LoadModelFrom("bucketname", "key", nil)
+	assert.T(t, err != nil)
+
+	// struct A has no "tag" for the Model field, so the bucket MUST be supplied
+	err = client.LoadModel("key", &a)
+	assert.T(t, err != nil)
+	t.Logf("err = %v\n", err)
+	assert.T(t, strings.Contains(err.Error(), "Can't get bucket"))
+
+	// Load a model that doesn't exist
+	err = client.LoadModelFrom("bucketnamethatdoesnotexit", "keythatdoesnotexist___", &a)
+	assert.T(t, err == NotFound)
+}
+
+func TestBrokenModels(t *testing.T) {
+	err := ConnectClient("127.0.0.1:8087")
+	assert.T(t, err == nil)
+
+	// Create some JSON with a _type field that does not match the class name
+	obj, err := NewObjectIn("brokenmodels", "brokenmodel")
+	assert.T(t, err == nil)
+	assert.T(t, obj != nil)
+	obj.ContentType = "application/json"
+	obj.Data = []byte(`{"_type":"notthismodel","field":"A"}`)
+	err = obj.Store()
+	assert.T(t, err == nil)
+	// Try to load this into a doc
+	doc := DocumentModel{}
+	err = LoadModelFrom("brokenmodels", "brokenmodel", &doc)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), "struct name does not match _type in Riak"))
+
+	// Now change the content so the _type matches, but the fields don't match
+	obj.Data = []byte(`{"_type":"DocumentModel","string_field":"string","float_field":"stringnotfloat","FieldB":true}`)
+	err = obj.Store()
+	assert.T(t, err == nil)
+	err = LoadModelFrom("brokenmodels", "brokenmodel", &doc)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), "cannot unmarshal"))
+	assert.T(t, IsWarning(err))
+
+	// Cleanup the test object
+	err = obj.Destroy()
+	assert.T(t, err == nil)
+
+	// Try to set a key on something that is not a model
+	err = defaultClient.SetKey("somekey", nil)
+	assert.T(t, err != nil)
+	// Try to set a key on a model that is not initialized
+	a := A{}
+	err = defaultClient.SetKey("somekey", &a)
+	assert.T(t, err == DestinationNotInitialized)
+	// Try again using the Model direct
+	err = a.SetKey("somekey")
+	assert.T(t, err == DestinationNotInitialized)
+}
+
+func TestNewModelInErrors(t *testing.T) {
+	err := ConnectClient("127.0.0.1:8087")
+	assert.T(t, err == nil)
+
+	// Try NewModal with something that is not a Model
+	err = NewModelIn("", "key", nil)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), `Destination is not a pointer`))
+
+	// Try NewModelIn without a bucketname (for a model that doesn't specify it in the riak.Model tag)
+	a := A{}
+	err = NewModelIn("", "key", &a)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), `Can't get bucket for`))
+
+	// Now try NewModel on a Model that is already initialized
+	err = NewModelIn("bucketname", "key", &a)
+	assert.T(t, err == nil) // First should work
+	err = NewModelIn("bucketname", "key", &a)
+	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
