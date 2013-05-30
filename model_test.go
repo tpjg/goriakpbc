@@ -235,6 +235,38 @@ func TestConflictingModel(t *testing.T) {
 	assert.T(t, err == nil)
 }
 
+func TestConflictingModelThatHasNoResolver(t *testing.T) {
+	// This should throw an error when it has to Resolve since it didn't
+	// override the default
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a bucket where siblings are allowed
+	bucket, err := client.Bucket("testconflict.go")
+	assert.T(t, err == nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+
+	t1 := DMTime{FieldS: "1"}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &t1)
+	assert.T(t, err == nil)
+	err = t1.Save()
+	assert.T(t, err == nil)
+
+	// Create with the same key
+	t2 := DMTime{FieldS: "2"}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &t2)
+	assert.T(t, err == nil)
+	err = t2.Save()
+	assert.T(t, err == nil)
+
+	// Now load to test conflicts, should return error ResolveNotImplemented
+	t3 := DMTime{}
+	err = client.LoadModelFrom("testconflict.go", "testconflictres", &t3)
+	assert.T(t, err == ResolveNotImplemented)
+}
+
 type DMTime struct {
 	FieldS string
 	FieldT time.Time
