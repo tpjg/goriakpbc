@@ -509,38 +509,20 @@ func TestRunConnectionPool(t *testing.T) {
 	}
 }
 
-// Seems Riak 1.3 is reacting different and this does not succeed.
-func testBrokenConnection(t *testing.T) {
+func TestBucketProperties(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
-
-	/*
-		Abuse direct access to underlying TCP connection, send something Riak
-		does not accept so it closes the connection on that end. This will result
-		in a few writes still succeeding, receiving an EOF and finally the write
-		failing with a broken pipe message.
-	*/
-	t.Logf("Testing a broken connection to Riak ...")
-	cerr, conn := client.getConn()
-	assert.T(t, cerr == nil)
-	msg := []byte{250, 0, 0, 1, 250, 250}
-	n, cerr := conn.Write(msg)
-	t.Logf("%v bytes written - err=%v\n", n, cerr)
-	client.releaseConn(conn)
-
-	bucket, cerr := client.Bucket("client_test.go")
-	t.Logf("1: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("2: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
-	t.Logf("3: %v\n", cerr)
-	bucket, cerr = client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test_props.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abcdefghijk", PW1, DW1)
-	assert.T(t, obj != nil)
-	obj.ContentType = "text/plain"
-	obj.Data = []byte("some more data")
-	err := obj.Store()
+
+	err := bucket.SetNVal(3)
 	assert.T(t, err == nil)
-	assert.T(t, obj.Vclock != nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+
+	bucket, _ = client.Bucket("client_test_props.go")
+	assert.T(t, bucket != nil)
+
+	assert.T(t, bucket.NVal() == 3)
+	assert.T(t, bucket.AllowMult() == true)
 }
