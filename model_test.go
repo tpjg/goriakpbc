@@ -415,9 +415,24 @@ func TestErrorCatching(t *testing.T) {
 
 	// Create a model that cannot be marshalled to JSON (see helpers above)
 	a := A{Err: 1}
-	err = client.NewModel("newKey", &a)
+	err = client.NewModelIn("abucket", "newKey", &a)
 	assert.T(t, err == nil) // this should still work
 	err = client.SaveAs("newKey", &a)
 	assert.T(t, err != nil) // but marshalling should fail
 	assert.T(t, strings.Contains(err.Error(), "Deliberate"))
+
+	// Same for Loading instead of Saving:
+	// First test by supplying something that is not even a pointer to a struct
+	err = client.LoadModelFrom("bucketname", "key", nil)
+	assert.T(t, err != nil)
+
+	// struct A has no "tag" for the Model field, so the bucket MUST be supplied
+	err = client.LoadModel("key", &a)
+	assert.T(t, err != nil)
+	t.Logf("err = %v\n", err)
+	assert.T(t, strings.Contains(err.Error(), "Can't get bucket"))
+
+	// Load a model that doesn't exist
+	err = client.LoadModelFrom("bucketnamethatdoesnotexit", "keythatdoesnotexist___", &a)
+	assert.T(t, err == NotFound)
 }

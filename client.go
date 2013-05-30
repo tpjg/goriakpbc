@@ -53,6 +53,7 @@ var (
 var (
 	BadNumberOfConnections = errors.New("Connection count <= 0")
 	BadResponseLength      = errors.New("Response length too short")
+	NoBucketName           = errors.New("No bucket name")
 )
 
 // Returns a new Client connection
