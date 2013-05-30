@@ -338,3 +338,21 @@ func TestModelNew(t *testing.T) {
 	// Verify that the default bucket was used
 	assert.T(t, doc.robject.Bucket.Name() == "testmodeldefault.go")
 }
+
+func TestClientSaveAndLoad(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	doc := DocumentModel{FieldS: "text", FieldF: 1.2, FieldB: true}
+	err := client.NewModel("clientsavetest", &doc)
+	assert.T(t, err == nil)
+
+	err = client.Save(&doc)
+	assert.T(t, err == nil)
+
+	err = client.LoadModel("clientsavetest", &doc)
+	assert.T(t, err == nil)
+
+	err = doc.Delete()
+	assert.T(t, err == nil)
+}
