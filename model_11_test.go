@@ -84,3 +84,9 @@ func TestConflictingModel11(t *testing.T) {
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
 }
+
+func TestConflictingNonModel(t *testing.T) {
+	doc := DocumentModel11{FieldS: "text", FieldF: 1.2, FieldB: true}
+	_, err := doc.Siblings(nil) // this should return an error (without panic)
+	assert.T(t, err != nil)
+}
