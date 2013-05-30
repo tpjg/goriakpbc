@@ -165,7 +165,7 @@ func TestObjectReload(t *testing.T) {
 	assert.T(t, bucket != nil)
 
 	// Create an object
-	obj := bucket.New("ghi")
+	obj := bucket.NewObject("ghi", R1, PR1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("test1")
@@ -199,7 +199,7 @@ func TestExists(t *testing.T) {
 	assert.T(t, bucket != nil)
 
 	// Check for a non-existing key
-	e, err := bucket.Exists("alskgqwioetuioweqadfh")
+	e, err := bucket.Exists("alskgqwioetuioweqadfh", R1, PR1)
 	assert.T(t, err == nil)
 	assert.T(t, e == false)
 

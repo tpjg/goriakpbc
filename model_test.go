@@ -230,6 +230,19 @@ func TestConflictingModel(t *testing.T) {
 	assert.T(t, doc3.FieldF == doc2.FieldF) // doc2 has larger FieldF
 	assert.T(t, doc3.FieldB == doc.FieldB)  // doc has FieldB set to true
 
+	// Now add another sibling, re-load it and check
+	doc2b := DocumentModel{FieldS: "longer_text-evenlonger", FieldF: 1.8, FieldB: false}
+	err = client.New("testconflict.go", "TestModelKey", &doc2b)
+	assert.T(t, err == nil)
+	err = doc2b.Save()
+	assert.T(t, err == nil)
+	//Reload
+	err = doc3.Reload()
+	assert.T(t, err == nil)
+	assert.T(t, doc3.FieldS == doc2b.FieldS) // doc2b has longest FieldS
+	assert.T(t, doc3.FieldF == doc2b.FieldF) // doc2b has largest FieldF
+	assert.T(t, doc3.FieldB == doc.FieldB)   // doc has FieldB set to true
+
 	// Cleanup
 	err = bucket.Delete("TestModelKey")
 	assert.T(t, err == nil)
