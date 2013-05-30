@@ -56,7 +56,7 @@ func TestStoreObject(t *testing.T) {
 
 	bucket, _ := client.Bucket("client_test.go")
 	assert.T(t, bucket != nil)
-	obj := bucket.New("abc", PW1, DW1)
+	obj := bucket.New("abc", PW1, DW1, W1)
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("some more data")
@@ -106,17 +106,31 @@ func TestObjectsWithSiblings(t *testing.T) {
 	err := bucket.SetAllowMult(true)
 	assert.T(t, err == nil)
 
+	// Create a target so links can also be tested
+	target, err := client.NewObjectIn("client_test.go", "targetkey")
+	assert.T(t, err == nil)
+	target.ContentType = "text/plain"
+	target.Data = []byte("data")
+	err = target.Store()
+	assert.T(t, err == nil)
+
 	// Create an object with two siblings
 	_ = bucket.Delete("def")
 	obj := bucket.New("def")
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 1")
+	obj.Meta["mymeta"] = "meta1"
+	obj.Indexes["myindex_bin"] = "index1"
+	obj.LinkTo(target, "mytag")
+
 	err = obj.Store()
 	assert.T(t, err == nil)
 
 	obj = bucket.New("def")
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 2")
+	obj.Meta["mymeta"] = "meta2"
+	obj.Indexes["myindex_bin"] = "index2"
 	err = obj.Store()
 	assert.T(t, err == nil)
 
@@ -128,6 +142,9 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, len(obj.Siblings[0].Data) > 0)
 	assert.T(t, len(obj.Siblings[1].Data) > 0)
 	assert.T(t, string(obj.Siblings[0].Data) != string(obj.Siblings[1].Data))
+	assert.T(t, obj.Siblings[0].Meta["mymeta"] != obj.Siblings[1].Meta["mymeta"])
+	assert.T(t, obj.Siblings[0].Indexes["myindex_bin"] != obj.Siblings[1].Indexes["myindex_bin"])
+	assert.T(t, len(obj.Siblings[0].Links) != len(obj.Siblings[1].Links))
 
 	// Cleanup
 	err = obj.Destroy()
@@ -135,6 +152,9 @@ func TestObjectsWithSiblings(t *testing.T) {
 	err = bucket.SetAllowMult(false)
 	assert.T(t, err == nil)
 	_ = bucket.Delete("def")
+
+	err = target.Destroy()
+	assert.T(t, err == nil)
 }
 
 func TestObjectReload(t *testing.T) {
@@ -525,4 +545,16 @@ func TestBucketProperties(t *testing.T) {
 
 	assert.T(t, bucket.NVal() == 3)
 	assert.T(t, bucket.AllowMult() == true)
+}
+
+func TestBadConnection(t *testing.T) {
+	// Tests for a connection that cannot be established, is this caught correctly?
+	err := ConnectClient("127.0.0.1:8088") // connecting to port 8088 should not work ... (and return fast)
+	assert.T(t, err != nil)
+
+	node, version, err := ServerVersion()
+	assert.T(t, err != nil)
+	assert.T(t, node == "")
+	assert.T(t, version == "")
+
 }
