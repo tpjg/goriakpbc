@@ -436,3 +436,31 @@ func TestErrorCatching(t *testing.T) {
 	err = client.LoadModelFrom("bucketnamethatdoesnotexit", "keythatdoesnotexist___", &a)
 	assert.T(t, err == NotFound)
 }
+
+func TestBrokenModels(t *testing.T) {
+	err := ConnectClient("127.0.0.1:8087")
+	assert.T(t, err == nil)
+
+	// Create some JSON with a _type field that does not match the class name
+	obj, err := NewObjectIn("brokenmodels", "brokenmodel")
+	assert.T(t, err == nil)
+	assert.T(t, obj != nil)
+	obj.ContentType = "application/json"
+	obj.Data = []byte(`{"_type":"notthismodel","field":"A"}`)
+	err = obj.Store()
+	assert.T(t, err == nil)
+	// Try to load this into a doc
+	doc := DocumentModel{}
+	err = LoadModelFrom("brokenmodels", "brokenmodel", &doc)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), "struct name does not match _type in Riak"))
+
+	// Now change the content so the _type matches, but the fields don't match
+	obj.Data = []byte(`{"_type":"DocumentModel","string_field":"string","float_field":"stringnotfloat","FieldB":true}`)
+	err = obj.Store()
+	assert.T(t, err == nil)
+	err = LoadModelFrom("brokenmodels", "brokenmodel", &doc)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), "cannot unmarshal"))
+
+}

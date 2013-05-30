@@ -567,4 +567,8 @@ func TestBadConnection(t *testing.T) {
 	assert.T(t, c != nil)
 	err = c.Connect()
 	assert.T(t, err != nil) // cannot have negative number of connections
+
+	// Check for no panic on double Close()
+	c.Close()
+	c.Close()
 }
