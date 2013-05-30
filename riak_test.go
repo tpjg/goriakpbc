@@ -106,8 +106,8 @@ func TestObjectsWithSiblings(t *testing.T) {
 	err := bucket.SetAllowMult(true)
 	assert.T(t, err == nil)
 
-	// Create a target so links can also be tested
-	target, err := client.NewObjectIn("client_test.go", "targetkey")
+	// Create a target so links can also be tested, include some riak store/read options
+	target, err := client.NewObjectIn("client_test.go", "targetkey", R1, PR1, W1, DW1, PW1)
 	assert.T(t, err == nil)
 	target.ContentType = "text/plain"
 	target.Data = []byte("data")

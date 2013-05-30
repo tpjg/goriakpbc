@@ -463,4 +463,37 @@ func TestBrokenModels(t *testing.T) {
 	assert.T(t, err != nil)
 	assert.T(t, strings.Contains(err.Error(), "cannot unmarshal"))
 
+	// Cleanup the test object
+	err = obj.Destroy()
+	assert.T(t, err == nil)
+
+	// Try to set a key on something that is not a model
+	err = defaultClient.SetKey("somekey", nil)
+	assert.T(t, err != nil)
+	// Try to set a key on a model that is not initialized
+	a := A{}
+	err = defaultClient.SetKey("somekey", &a)
+	assert.T(t, err == DestinationNotInitialized)
+}
+
+func TestNewModelInErrors(t *testing.T) {
+	err := ConnectClient("127.0.0.1:8087")
+	assert.T(t, err == nil)
+
+	// Try NewModal with something that is not a Model
+	err = NewModelIn("", "key", nil)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), `Destination is not a pointer`))
+
+	// Try NewModelIn without a bucketname (for a model that doesn't specify it in the riak.Model tag)
+	a := A{}
+	err = NewModelIn("", "key", &a)
+	assert.T(t, err != nil)
+	assert.T(t, strings.Contains(err.Error(), `Can't get bucket for`))
+
+	// Now try NewModel on a Model that is already initialized
+	err = NewModelIn("bucketname", "key", &a)
+	assert.T(t, err == nil) // First should work
+	err = NewModelIn("bucketname", "key", &a)
+	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
