@@ -34,6 +34,11 @@ func ConnectClientPool(addr string, count int) (err error) {
 	return defaultClient.Connect()
 }
 
+// Closes the connection of the default client.
+func Close() {
+	defaultClient.Close()
+}
+
 // Ping the server
 func Ping() (err error) {
 	if defaultClient == nil {

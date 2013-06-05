@@ -29,7 +29,7 @@ func main() {
 
 	fmt.Printf("Stored an object in Riak, vclock = %v\n", obj.Vclock)
 
-	client.Close()
+	riak.Close()
 }
 ```
 
