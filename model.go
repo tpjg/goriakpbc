@@ -555,6 +555,15 @@ func (m *Model) Vclock() (vclock []byte) {
 	return m.robject.Vclock
 }
 
+// Return the object's indexes.  This allows an application to set custom secondary
+// indexes on the object for later querying.
+func (m *Model) Indexes() map[string]string {
+	if m.robject.Indexes == nil {
+		m.robject.Indexes = make(map[string]string)
+	}
+	return m.robject.Indexes
+}
+
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
