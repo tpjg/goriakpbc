@@ -285,6 +285,70 @@ func TestConflictingModelThatHasNoResolver(t *testing.T) {
 	assert.T(t, err == ResolveNotImplemented)
 }
 
+type SliceType struct {
+	Value []string
+	Model
+}
+
+func (f *SliceType) Resolve(siblingsCount int) error {
+	siblings := make([]SliceType, siblingsCount)
+
+	err := f.GetSiblings(&siblings)
+	if err != nil {
+		return err
+	}
+
+	var haveA, haveB bool
+	
+	for _, sib := range siblings {
+		if len(sib.Value) == 1 && sib.Value[0] == "A" {
+			haveA = true
+		} else if len(sib.Value) == 1 && sib.Value[0] == "B" {
+			haveB = true
+		}
+	}
+	
+	if haveA && haveB {
+		return nil
+	}
+	return errors.New("Failed to find both \"A\" \"B\" strings!")
+}
+
+func TestConflictingModelWithSlices(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	// Create a bucket where siblings are allowed
+	bucket, err := client.Bucket("testconflict.go")
+	assert.T(t, err == nil)
+	err = bucket.SetAllowMult(true)
+	assert.T(t, err == nil)
+	// Preform clean up, make sure no other conflicts are kicking around.
+	err = bucket.Delete("testconflictres")
+	assert.T(t, err == nil)
+	
+	store := SliceType{Value: []string{"A"}}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &store)
+	assert.T(t, err == nil)
+	err = store.Save()
+	assert.T(t, err == nil)
+	
+	store = SliceType{Value: []string{"B"}}
+	err = client.NewModelIn("testconflict.go", "testconflictres", &store)
+	assert.T(t, err == nil)
+	err = store.Save()
+	assert.T(t, err == nil)
+
+	load := SliceType{}
+	err = client.LoadModelFrom("testconflict.go", "testconflictres", &load)
+	assert.T(t, err == nil, err)
+	
+	err = bucket.Delete("testconflictres")
+	assert.T(t, err == nil)
+	err = bucket.SetAllowMult(false)
+	assert.T(t, err == nil)
+}
+
 type DMTime struct {
 	FieldS string
 	FieldT time.Time
