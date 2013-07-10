@@ -257,7 +257,7 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 // Get directly from a bucket, without creating a bucket first
 func (c *Client) GetFrom(bucketname string, key string, options ...map[string]uint32) (obj *RObject, err error) {
 	var bucket *Bucket
-	bucket, err = defaultClient.Bucket(bucketname)
+	bucket, err = c.Bucket(bucketname)
 	if err != nil {
 		return
 	}
