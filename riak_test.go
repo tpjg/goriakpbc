@@ -1,6 +1,7 @@
 package riak
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/bmizerany/assert"
 	"strconv"
@@ -493,6 +494,92 @@ func TestMapReduce(t *testing.T) {
 	res, err = mr.Run()
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
+}
+
+func TestMapReduceExample(t *testing.T) {
+	// Run the queries from the example on the Basho site,
+	// http://docs.basho.com/riak/1.2.1/references/appendices/MapReduce-Implementation/
+
+	// Preparations
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	bucket, _ := client.Bucket("alice_test.go")
+	assert.T(t, bucket != nil)
+
+	// $ curl -XPUT -H "content-type: text/plain" http://localhost:8098/riak/alice/p1 --data-binary @-<<\EOF
+	p1 := bucket.NewObject("p1")
+	p1.ContentType = "text/plain"
+	p1.Data = []byte(`Alice was beginning to get very tired of sitting by her sister on the
+bank, and of having nothing to do: once or twice she had peeped into the
+book her sister was reading, but it had no pictures or conversations in
+it, 'and what is the use of a book,' thought Alice 'without pictures or
+conversation?'`)
+	err := p1.Store()
+	assert.T(t, err == nil)
+	// $ curl -XPUT -H "content-type: text/plain" http://localhost:8098/riak/alice/p2 --data-binary @-<<\EOF
+	p2 := bucket.NewObject("p2")
+	p2.ContentType = "text/plain"
+	p2.Data = []byte(`So she was considering in her own mind (as well as she could, for the
+hot day made her feel very sleepy and stupid), whether the pleasure
+of making a daisy-chain would be worth the trouble of getting up and
+picking the daisies, when suddenly a White Rabbit with pink eyes ran
+close by her.`)
+	err = p2.Store()
+	assert.T(t, err == nil)
+	// $ curl -XPUT -H "content-type: text/plain" http://localhost:8098/riak/alice/p5 --data-binary @-<<\EOF
+	p5 := bucket.NewObject("p5")
+	p5.ContentType = "text/plain"
+	p5.Data = []byte(`The rabbit-hole went straight on like a tunnel for some way, and then
+dipped suddenly down, so suddenly that Alice had not a moment to think
+about stopping herself before she found herself falling down a very deep
+well.`)
+	err = p5.Store()
+	assert.T(t, err == nil)
+
+	mr := client.MapReduce()
+	mr.Add("alice_test.go", "p1")
+	mr.Add("alice_test.go", "p2")
+	mr.Add("alice_test.go", "p5")
+	mr.Map(`function(v) {
+  var m = v.values[0].data.toLowerCase().match(/\w*/g);
+  var r = [];
+  for(var i in m) {
+    if(m[i] != '') {
+      var o = {};
+      o[m[i]] = 1;
+      r.push(o);
+    }
+  }
+  return r;
+}`, false)
+	mr.Reduce(`
+function(v) {
+  var r = {};
+  for(var i in v) {
+    for(var w in v[i]) {
+      if(w in r) r[w] += v[i][w];
+      else r[w] = v[i][w];
+    }
+  }
+  return [r];
+}`, true)
+	res, err := mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+	// Check the result, can come in out-of-order, so compare the content using two maps
+	var v1 map[string]int
+	var v2 map[string]int
+	json.Unmarshal([]byte(`[{"the":8,"rabbit":2,"hole":1,"went":1,"straight":1,"on":2,"like":1,"a":6,"tunnel":1,"for":2,"some":1,"way":1,"and":5,"then":1,"dipped":1,"suddenly":3,"down":2,"so":2,"that":1,"alice":3,"had":3,"not":1,"moment":1,"to":3,"think":1,"about":1,"stopping":1,"herself":2,"before":1,"she":4,"found":1,"falling":1,"very":3,"deep":1,"well":2,"was":3,"considering":1,"in":2,"her":5,"own":1,"mind":1,"as":2,"could":1,"hot":1,"day":1,"made":1,"feel":1,"sleepy":1,"stupid":1,"whether":1,"pleasure":1,"of":5,"making":1,"daisy":1,"chain":1,"would":1,"be":1,"worth":1,"trouble":1,"getting":1,"up":1,"picking":1,"daisies":1,"when":1,"white":1,"with":1,"pink":1,"eyes":1,"ran":1,"close":1,"by":2,"beginning":1,"get":1,"tired":1,"sitting":1,"sister":2,"bank":1,"having":1,"nothing":1,"do":1,"once":1,"or":3,"twice":1,"peeped":1,"into":1,"book":2,"reading":1,"but":1,"it":2,"no":1,"pictures":2,"conversations":1,"what":1,"is":1,"use":1,"thought":1,"without":1,"conversation":1}]`), &v1)
+	json.Unmarshal(res[0], &v2)
+	for k, v := range v1 {
+		assert.T(t, v2[k] == v)
+	}
+
+	// Cleanup
+	p1.Destroy()
+	p2.Destroy()
+	p5.Destroy()
 }
 
 /*
