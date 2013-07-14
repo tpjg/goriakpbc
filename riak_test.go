@@ -107,6 +107,14 @@ func TestGetAndDeleteObject(t *testing.T) {
 	obj, err := bucket.Get("abc", R1, PR1)
 	assert.T(t, err == nil)
 	assert.T(t, obj != nil)
+
+	// Also test the GetFrom function works the same here too.  Kill the defaultClient to trigger any
+	// bugs related to using it.
+	defaultClient.Close()
+	defaultClient = nil
+	obj, err = client.GetFrom("client_test.go", "abc", R1, PR1)
+	assert.T(t, err == nil)
+	assert.T(t, obj != nil)
 	/*
 		t.Logf("obj key  : %s\n", obj.Key)
 		t.Logf("vclock   : %s\n", obj.Vclock)
