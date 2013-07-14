@@ -44,6 +44,17 @@ func (mr *MapReduce) Map(fun string, keep bool) {
 	mr.phases = append(mr.phases, m)
 }
 
+func (mr *MapReduce) Reduce(fun string, keep bool) {
+	m := `{"reduce":{"language":"javascript","keep":`
+	if keep {
+		m = m + "true,"
+	} else {
+		m = m + "false,"
+	}
+	m = m + `"source":"` + fun + `"}}`
+	mr.phases = append(mr.phases, m)
+}
+
 func (mr *MapReduce) MapErlang(module string, fun string, keep bool) {
 	m := `{"map":{"language":"erlang","module":"` + module + `","function":"` + fun + `","keep":`
 	if keep {
