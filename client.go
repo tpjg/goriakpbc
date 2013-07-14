@@ -54,6 +54,7 @@ var (
 	BadNumberOfConnections = errors.New("Connection count <= 0")
 	BadResponseLength      = errors.New("Response length too short")
 	NoBucketName           = errors.New("No bucket name")
+	BadMapReduceInputs     = errors.New("MapReduce inputs should be either a (single) index or bucket,key pairs - not both at")
 )
 
 // Returns a new Client connection

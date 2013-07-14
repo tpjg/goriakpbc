@@ -2,7 +2,7 @@ package riak
 
 import (
 	"encoding/json"
-
+	"fmt"
 	"github.com/tpjg/goriakpbc/pb"
 )
 
@@ -11,6 +11,7 @@ import (
 type MapReduce struct {
 	client  *Client
 	inputs  [][]string
+	index   string
 	phases  []string
 	request string
 }
@@ -19,8 +20,49 @@ func (c *Client) MapReduce() *MapReduce {
 	return &MapReduce{client: c, inputs: make([][]string, 0), phases: make([]string, 0), request: ""}
 }
 
-func (mr *MapReduce) Add(bucket string, key string) {
+func (mr *MapReduce) Add(bucket string, key string) (err error) {
+	if mr.index != "" {
+		return BadMapReduceInputs
+	}
 	mr.inputs = append(mr.inputs, []string{bucket, key})
+	return
+}
+
+// Add a whole bucket as input. Note that this ONLY works on buckets that have secondary indexes (2i) enabled since
+// listing keys on a bucket without using indexes is dangerous on production clusters.
+func (mr *MapReduce) AddBucket(bucket string) (err error) {
+	if len(mr.inputs) > 0 || mr.index != "" {
+		return BadMapReduceInputs
+	}
+	mr.index = fmt.Sprintf(`"bucket":"%v","index":"$bucket","key":"%v"`, bucket, bucket)
+	return
+}
+
+// Add a range of keys from one bucket using secondary indexes.
+func (mr *MapReduce) AddBucketRange(bucket string, start string, end string) (err error) {
+	if len(mr.inputs) > 0 || mr.index != "" {
+		return BadMapReduceInputs
+	}
+	mr.index = fmt.Sprintf(`"bucket":"%v","index":"$key","start":"%v","end":"%v"`, bucket, start, end)
+	return
+}
+
+// Add a keys using a secondary index.
+func (mr *MapReduce) AddIndex(bucket string, index string, key string) (err error) {
+	if len(mr.inputs) > 0 || mr.index != "" {
+		return BadMapReduceInputs
+	}
+	mr.index = fmt.Sprintf(`"bucket":"%v","index":"%v","key":"%v","end":"%v"`, bucket, index, key)
+	return
+}
+
+// Add a range of keys using a secondary index.
+func (mr *MapReduce) AddIndexRange(bucket string, index string, start string, end string) (err error) {
+	if len(mr.inputs) > 0 || mr.index != "" {
+		return BadMapReduceInputs
+	}
+	mr.index = fmt.Sprintf(`"bucket":"%v","index":"%v","start":"%v","end":"%v"`, bucket, index, start, end)
+	return
 }
 
 func (mr *MapReduce) LinkBucket(name string, keep bool) {
@@ -73,11 +115,21 @@ func (mr *MapReduce) MapObjectValue(keep bool) {
 
 // Generate the Query string
 func (mr *MapReduce) Query() (query []byte, err error) {
-	inputs, err := json.Marshal(mr.inputs)
-	if err != nil {
-		return nil, err
+	// Check because either a whole bucket should be added or only inputs
+	if mr.index != "" && len(mr.inputs) > 0 {
+		err = BadMapReduceInputs
+		return
 	}
-	q := `{"inputs":` + string(inputs) + `, "query":[`
+	q := ``
+	if mr.index == "" {
+		inputs, err := json.Marshal(mr.inputs)
+		if err != nil {
+			return nil, err
+		}
+		q = `{"inputs":` + string(inputs) + `, "query":[`
+	} else {
+		q = `{"inputs":{` + mr.index + `}, "query":[`
+	}
 	for i, s := range mr.phases {
 		if i > 0 {
 			q = q + ","
