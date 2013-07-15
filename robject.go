@@ -220,9 +220,12 @@ func (obj *RObject) AddLink(link Link) bool {
 
 // Get an object
 func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, err error) {
+	t := true
 	req := &pb.RpbGetReq{
-		Bucket: []byte(b.name),
-		Key:    []byte(key),
+		Bucket:        []byte(b.name),
+		Key:           []byte(key),
+		NotfoundOk:    &t,
+		Deletedvclock: &t,
 	}
 	for _, omap := range options {
 		for k, v := range omap {
@@ -243,12 +246,14 @@ func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, er
 	if err != nil {
 		return nil, err
 	}
+	// Create a new object (even if only for storing the returned Vclock)
+	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock, Options: options}
+
 	// If no Content is returned then the object was  not found
 	if len(resp.Content) == 0 {
-		return &RObject{}, NotFound
+		return obj, NotFound
 	}
-	// Create a new object and set the fields
-	obj = &RObject{Key: key, Bucket: b, Vclock: resp.Vclock, Options: options}
+	// Set the fields
 	obj.setContent(resp)
 
 	return obj, nil
