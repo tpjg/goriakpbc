@@ -128,6 +128,10 @@ func TestGetAndDeleteObject(t *testing.T) {
 	*/
 	err = bucket.Delete("abc", R1, PR1, W1, DW1, PW1)
 	assert.T(t, err == nil)
+	// Immediately get the same object again, should have a valid Vclock (tombstone)
+	obj, err = bucket.Get("abc")
+	assert.T(t, len(obj.Vclock) > 0)
+	assert.T(t, err == NotFound)
 }
 
 func TestObjectsWithSiblings(t *testing.T) {
