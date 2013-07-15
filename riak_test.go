@@ -460,7 +460,7 @@ func TestMapReduce(t *testing.T) {
 	// Preparations
 	client := setupConnection(t)
 	assert.T(t, client != nil)
-	bucket, _ := client.Bucket("client_test.go")
+	bucket, _ := client.Bucket("client_test_mr.go")
 	assert.T(t, bucket != nil)
 	// Create object 1
 	obj1 := bucket.New("mrobj1")
@@ -481,7 +481,7 @@ func TestMapReduce(t *testing.T) {
 	obj1.Store()
 
 	mr := client.MapReduce()
-	mr.Add("client_test.go", "mrobj1")
+	mr.Add("client_test_mr.go", "mrobj1")
 	//mr.LinkBucket("bucketname", false)
 	mr.Map("function(v) {return [v];}", true)
 	res, err := mr.Run()
@@ -489,11 +489,47 @@ func TestMapReduce(t *testing.T) {
 	assert.T(t, len(res) == 1)
 
 	mr = client.MapReduce()
-	mr.Add("client_test.go", "mrobj1")
+	mr.Add("client_test_mr.go", "mrobj1")
 	mr.MapObjectValue(true)
 	res, err = mr.Run()
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
+
+	// Run mr on the whole bucket
+	mr = client.MapReduce()
+	mr.AddBucket("client_test_mr.go")
+	mr.MapObjectValue(true)
+	res, err = mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 2)
+
+	// Run mr on a range
+	mr = client.MapReduce()
+	mr.AddBucketRange("client_test_mr.go", " ", "mrobj1")
+	mr.MapObjectValue(true)
+	res, err = mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+
+	// Run mr on an index (same, but testing different function)
+	mr = client.MapReduce()
+	mr.AddIndexRange("client_test_mr.go", "$key", " ", "mrobj1")
+	mr.MapObjectValue(true)
+	res, err = mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+
+	// Run mr on an index with just one key instead of a range
+	mr = client.MapReduce()
+	mr.AddIndex("client_test_mr.go", "$key", "mrobj1")
+	mr.MapObjectValue(true)
+	res, err = mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+
+	// Cleanup
+	obj1.Destroy()
+	obj2.Destroy()
 }
 
 func TestMapReduceExample(t *testing.T) {
