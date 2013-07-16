@@ -113,6 +113,13 @@ func (c *Client) addOneLink(source Link, dest reflect.Value) {
 	}
 }
 
+// Sets up a riak.Model structure and assigns it to the given resolver field.
+func setup_model(obj *RObject, dest Resolver, rm reflect.Value) {
+	model := Model{robject: obj, parent: dest}
+	mv := reflect.ValueOf(model)
+	rm.Set(mv)
+}
+
 // Check if the passed destination is a pointer to a struct with riak.Model field
 // Returns the destination Value and Type (dv, dt) as well as the riak.Model field (rm)
 // and the bucketname (bn), which is derived from the tag of the riak.Model field.
@@ -286,10 +293,7 @@ func (c *Client) LoadModelFrom(bucketname string, key string, dest Resolver, opt
 	if err != nil {
 		if obj != nil {
 			// Set the values in the riak.Model field
-			model := &Model{robject: obj, parent: dest}
-			mv := reflect.ValueOf(model)
-			mv = mv.Elem()
-			rm.Set(mv)
+			setup_model(obj, dest, rm)
 		}
 		return err
 	}
@@ -305,10 +309,7 @@ func (c *Client) LoadModelFrom(bucketname string, key string, dest Resolver, opt
 			}
 		}
 		// Set the RObject in the destination struct so it can be used for resolving the conflict
-		model := &Model{robject: obj, parent: dest}
-		mv := reflect.ValueOf(model)
-		mv = mv.Elem()
-		rm.Set(mv)
+		setup_model(obj, dest, rm)
 		// Resolve the conflict and return the errorcode
 		return dest.Resolve(count)
 	}
@@ -316,10 +317,7 @@ func (c *Client) LoadModelFrom(bucketname string, key string, dest Resolver, opt
 	err = c.mapData(dv, dt, obj.Data, obj.Links, dest)
 
 	// Set the values in the riak.Model field
-	model := &Model{robject: obj, parent: dest}
-	mv := reflect.ValueOf(model)
-	mv = mv.Elem()
-	rm.Set(mv)
+	setup_model(obj, dest, rm)
 
 	return
 }
