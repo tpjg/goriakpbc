@@ -63,6 +63,12 @@ func TestModel(t *testing.T) {
 	doc3 := DocumentModel{}
 	err = client.Load("testmodel.go", "TestModelKey", &doc3)
 	assert.T(t, err == NotFound)
+
+	// Immediately get the same object again, should have a valid Vclock (tombstone)
+	doc4 := DocumentModel{}
+	err = client.Load("testmodel.go", "TestModelKey", &doc4)
+	assert.T(t, doc4.Model.robject != nil)
+	assert.T(t, err == NotFound)
 }
 
 type DocumentModelWithLinks struct {
