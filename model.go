@@ -284,6 +284,13 @@ func (c *Client) LoadModelFrom(bucketname string, key string, dest Resolver, opt
 	}
 	obj, err := bucket.Get(key, options...)
 	if err != nil {
+		if obj != nil {
+			// Set the values in the riak.Model field
+			model := &Model{robject: obj, parent: dest}
+			mv := reflect.ValueOf(model)
+			mv = mv.Elem()
+			rm.Set(mv)
+		}
 		return err
 	}
 	if obj == nil {
