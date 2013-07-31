@@ -3,7 +3,7 @@ package riak
 import (
 	"errors"
 
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/customerio/goriakpbc/pb"
 )
 
 // A Riak link

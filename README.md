@@ -58,6 +58,19 @@ keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(1
 
 ```
 
+Using Riak 1.4 and greater, you can pagination through keys in secondary indexes:
+
+```go
+keys, continuation, err := bucket.IndexQueryPage("test_int", strconv.Itoa(123), 10, "")
+...
+keys, continuation, err = bucket.IndexQueryPage("test_int", strconv.Itoa(123), 10, continuation)
+...
+keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 10, "")
+...
+keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 10, continuation)
+
+```
+
 ### Map Reduce
 
 There is a function to run a MapReduce directly:

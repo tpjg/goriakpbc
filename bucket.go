@@ -1,7 +1,7 @@
 package riak
 
 import (
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/customerio/goriakpbc/pb"
 )
 
 // Implements access to a bucket and its properties
@@ -213,6 +213,34 @@ func (b *Bucket) IndexQuery(index string, key string) (keys []string, err error)
 	return
 }
 
+// Return a page of keys using the index for a single key
+func (b *Bucket) IndexQueryPage(index string, key string, results uint32, continuation string) (keys []string, next string, err error) {
+	req := &pb.RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
+		Qtype: pb.RpbIndexReq_eq.Enum(), Key: []byte(key),
+		MaxResults: &results}
+
+	if continuation != "" {
+		req.Continuation = []byte(continuation)
+	}
+
+	err, conn := b.client.request(req, rpbIndexReq)
+	if err != nil {
+		return nil, "", err
+	}
+	resp := &pb.RpbIndexResp{}
+	err = b.client.response(conn, resp)
+	if err != nil {
+		return nil, "", err
+	}
+	keys = make([]string, len(resp.Keys))
+	for i, v := range resp.Keys {
+		keys[i] = string(v)
+	}
+
+	next = string(resp.Continuation)
+	return
+}
+
 // Return a list of keys using the index range query
 func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []string, err error) {
 	req := &pb.RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
@@ -231,6 +259,35 @@ func (b *Bucket) IndexQueryRange(index string, min string, max string) (keys []s
 	for i, v := range resp.Keys {
 		keys[i] = string(v)
 	}
+	return
+}
+
+// Return a page of keys using the index range query
+func (b *Bucket) IndexQueryRangePage(index string, min string, max string, results uint32, continuation string) (keys []string, next string, err error) {
+	req := &pb.RpbIndexReq{Bucket: []byte(b.name), Index: []byte(index),
+		Qtype:    pb.RpbIndexReq_range.Enum(),
+		RangeMin: []byte(min), RangeMax: []byte(max),
+		MaxResults: &results}
+
+	if continuation != "" {
+		req.Continuation = []byte(continuation)
+	}
+
+	err, conn := b.client.request(req, rpbIndexReq)
+	if err != nil {
+		return nil, "", err
+	}
+	resp := &pb.RpbIndexResp{}
+	err = b.client.response(conn, resp)
+	if err != nil {
+		return nil, "", err
+	}
+	keys = make([]string, len(resp.Keys))
+	for i, v := range resp.Keys {
+		keys[i] = string(v)
+	}
+
+	next = string(resp.Continuation)
 	return
 }
 

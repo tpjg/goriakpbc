@@ -378,6 +378,23 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "indexes")
+
+	// Get a pages of keys using the index query
+	keys, continuation, err := bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, "")
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexes")
+
+	keys, continuation, err = bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 0)
+
 	// Get a list of keys using the index range query
 	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
 	if err == nil {
@@ -387,6 +404,32 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, len(keys) == 2)
 	assert.T(t, keys[0] == "indexes" || keys[1] == "indexes")
 	assert.T(t, keys[0] == "indexes2" || keys[1] == "indexes2")
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, "")
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexes")
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexes2")
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 0)
 
 	// Cleanup
 	err = obj.Destroy()
