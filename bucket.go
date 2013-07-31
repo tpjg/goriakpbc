@@ -1,7 +1,7 @@
 package riak
 
 import (
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/customerio/goriakpbc/pb"
 )
 
 // Implements access to a bucket and its properties
