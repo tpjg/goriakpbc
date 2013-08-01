@@ -379,6 +379,10 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "indexes")
 
+	// Get the server version
+	_, version, err := client.ServerVersion()
+	assert.T(t, err == nil)
+
 	// Get a pages of keys using the index query
 	keys, continuation, err := bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, "")
 	if err == nil {
@@ -390,10 +394,13 @@ func TestObjectIndexes(t *testing.T) {
 
 	keys, continuation, err = bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, continuation)
 	if err == nil {
-		t.Logf("2i range query returned : %v\n", keys)
+		t.Logf("2i range query returned : %v - %v\n", keys, err)
 	}
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 0)
+	// Only test if continuation really skipped result if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 0)
+	}
 
 	// Get a list of keys using the index range query
 	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
@@ -411,8 +418,11 @@ func TestObjectIndexes(t *testing.T) {
 		t.Logf("2i range query returned : %v\n", keys)
 	}
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 1)
-	assert.T(t, keys[0] == "indexes")
+	// Only test if limiting results (and sorting) works if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 1)
+		assert.T(t, keys[0] == "indexes")
+	}
 
 	// Get a page of keys using the index range query
 	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
@@ -420,8 +430,11 @@ func TestObjectIndexes(t *testing.T) {
 		t.Logf("2i range query returned : %v\n", keys)
 	}
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 1)
-	assert.T(t, keys[0] == "indexes2")
+	// Only test if limiting results (and sorting) works if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 1)
+		assert.T(t, keys[0] == "indexes2")
+	}
 
 	// Get a page of keys using the index range query
 	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
@@ -429,7 +442,10 @@ func TestObjectIndexes(t *testing.T) {
 		t.Logf("2i range query returned : %v\n", keys)
 	}
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 0)
+	// Only test if continuation really skipped result if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 0)
+	}
 
 	// Cleanup
 	err = obj.Destroy()
