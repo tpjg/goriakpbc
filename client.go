@@ -34,6 +34,7 @@ type Client struct {
 	writeTimeout time.Duration
 	conn_count   int
 	conns        chan *net.TCPConn
+	chanWait     int
 }
 
 /*
@@ -55,6 +56,7 @@ var (
 	BadResponseLength      = errors.New("Response length too short")
 	NoBucketName           = errors.New("No bucket name")
 	BadMapReduceInputs     = errors.New("MapReduce inputs should be either a (single) index or bucket,key pairs - not both at")
+	ChanWaitTimeout        = errors.New("Waiting for an available connection timed out")
 )
 
 // Returns a new Client connection
@@ -147,7 +149,17 @@ func (c *Client) getConn() (err error, conn *net.TCPConn) {
 			return err, nil
 		}
 	}
-	conn = <-c.conns
+	if c.chanWait > 0 {
+		select {
+			case conn = <-c.conns:
+				break
+			case <-time.After(time.Duration(c.chanWait) * time.Millisecond):
+				err = ChanWaitTimeout
+				break
+		}
+	} else {
+		conn = <-c.conns
+	}
 	return err, conn
 }
 
@@ -431,4 +443,10 @@ func (c *Client) ServerVersion() (node string, version string, err error) {
 		version = string(resp.ServerVersion)
 	}
 	return node, version, err
+}
+
+// Set the maximum time (in milliseconds) to wait for a connection to
+// be available in the pool. By default getConn() will wait forever.
+func (c *Client) SetChanWaitTimeout(waitTimeout int) {
+    c.chanWait = waitTimeout
 }
