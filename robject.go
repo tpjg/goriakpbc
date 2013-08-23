@@ -15,11 +15,14 @@ type Link struct {
 
 // An object van have siblings that can each have their own content
 type Sibling struct {
-	ContentType string
-	Data        []byte
-	Links       []Link
-	Meta        map[string]string
-	Indexes     map[string]string
+	ContentType     string
+	Data            []byte
+	Links           []Link
+	Meta            map[string]string
+	Indexes         map[string]string
+	Vtag            string
+	LastMod         uint32
+	LastModUsecs    uint32
 }
 
 // An RObject is an object or document that is or can be stored in Riak
@@ -163,6 +166,9 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 		for i, content := range resp.Content {
 			obj.Siblings[i].ContentType = string(content.ContentType)
 			obj.Siblings[i].Data = content.Value
+			obj.Siblings[i].Vtag = string(content.Vtag)
+			obj.Siblings[i].LastMod = *content.LastMod
+			obj.Siblings[i].LastModUsecs = *content.LastModUsecs
 			obj.Siblings[i].Links = make([]Link, len(content.Links))
 			for j, link := range content.Links {
 				obj.Siblings[i].Links[j] = Link{string(link.Bucket),
