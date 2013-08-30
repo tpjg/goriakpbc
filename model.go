@@ -659,6 +659,25 @@ func (m *Many) Add(dest Resolver) (err error) {
 	return err
 }
 
+// Remove a Link to the given Model (dest)
+func (m *Many) Remove(dest Resolver) (err error) {
+	_, _, _, _, err = check_dest(dest)
+	if err == nil {
+		o := One{model: dest}
+		o.link, err = o.client.linkToModel(dest)
+		for i, v := range *m {
+			if v.link.Bucket == o.link.Bucket && v.link.Key == o.link.Key {
+				// Remove this element from the list
+				*m = append((*m)[:i], (*m)[i+1:]...)
+				return err
+			}
+		}
+	} else {
+		return err
+	}
+	return NotFound
+}
+
 // Return the number of Links
 func (m *Many) Len() int {
 	return len(*m)

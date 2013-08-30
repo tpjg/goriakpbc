@@ -174,6 +174,12 @@ func TestModelWithManyLinks(t *testing.T) {
 		assert.T(t, err == nil)
 		t.Logf("TestingModelWithManyLinks - %v - %v - %v\n", i, v, f)
 	}
+
+	// Now remove one of the documents.
+	err = doc2.Friends.Remove(&f2)
+	t.Logf("TestingModelWithManyLinks - removing a link %v", err)
+	assert.T(t, err == nil)
+	assert.T(t, doc2.Friends.Len() == 1)
 }
 
 /*
@@ -305,7 +311,7 @@ func (f *SliceType) Resolve(siblingsCount int) error {
 	}
 
 	var haveA, haveB bool
-	
+
 	for _, sib := range siblings {
 		if len(sib.Value) == 1 && sib.Value[0] == "A" {
 			haveA = true
@@ -313,7 +319,7 @@ func (f *SliceType) Resolve(siblingsCount int) error {
 			haveB = true
 		}
 	}
-	
+
 	if haveA && haveB {
 		return nil
 	}
@@ -332,13 +338,13 @@ func TestConflictingModelWithSlices(t *testing.T) {
 	// Preform clean up, make sure no other conflicts are kicking around.
 	err = bucket.Delete("testconflictres")
 	assert.T(t, err == nil)
-	
+
 	store := SliceType{Value: []string{"A"}}
 	err = client.NewModelIn("testconflict.go", "testconflictres", &store)
 	assert.T(t, err == nil)
 	err = store.Save()
 	assert.T(t, err == nil)
-	
+
 	store = SliceType{Value: []string{"B"}}
 	err = client.NewModelIn("testconflict.go", "testconflictres", &store)
 	assert.T(t, err == nil)
@@ -348,7 +354,7 @@ func TestConflictingModelWithSlices(t *testing.T) {
 	load := SliceType{}
 	err = client.LoadModelFrom("testconflict.go", "testconflictres", &load)
 	assert.T(t, err == nil, err)
-	
+
 	err = bucket.Delete("testconflictres")
 	assert.T(t, err == nil)
 	err = bucket.SetAllowMult(false)
