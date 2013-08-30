@@ -427,6 +427,8 @@ func (c *Client) SaveAs(newKey string, dest Resolver) (err error) {
 	if err != nil {
 		return err
 	}
+	// Clear the old links
+	model.robject.Links = []Link{}
 	// Now add the Links
 	for i := 0; i < dt.NumField(); i++ {
 		ft := dt.Field(i)

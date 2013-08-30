@@ -180,6 +180,15 @@ func TestModelWithManyLinks(t *testing.T) {
 	t.Logf("TestingModelWithManyLinks - removing a link %v", err)
 	assert.T(t, err == nil)
 	assert.T(t, doc2.Friends.Len() == 1)
+	err = doc2.Save()
+	assert.T(t, err == nil)
+	// Test that f2 was removed
+	var doc3 FriendLinks
+	err = client.Load("testmodel.go", "TestMany", &doc3)
+	assert.T(t, err == nil)
+	assert.T(t, len(doc3.Friends) == 1)
+	assert.T(t, doc3.Friends.Len() == 1)
+	assert.T(t, doc3.Friends[0].link.Key == "f1") // Check if the correct link is remaining
 }
 
 /*
