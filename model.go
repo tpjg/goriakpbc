@@ -291,8 +291,8 @@ func (c *Client) LoadModelFrom(bucketname string, key string, dest Resolver, opt
 	}
 	obj, err := bucket.Get(key, options...)
 	if err != nil {
-		if obj != nil {
-			// Set the values in the riak.Model field
+		if obj != nil && len(obj.Vclock) > 0 {
+			// Set the values in the riak.Model field in case a tombstone was returned
 			setup_model(obj, dest, rm)
 		}
 		return err
