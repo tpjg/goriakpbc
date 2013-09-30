@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"syscall"
 	"time"
@@ -48,6 +49,14 @@ var (
 	W1  = map[string]uint32{"w": 1}
 	DW1 = map[string]uint32{"dw": 1}
 	PW1 = map[string]uint32{"pw": 1}
+)
+
+// Protobuf symbolic quorum integer values
+const (
+	QuorumOne      = uint32(math.MaxUint32 - 1)
+	QuorumMajority = uint32(math.MaxUint32 - 2)
+	QuorumAll      = uint32(math.MaxUint32 - 3)
+	QuorumDefault  = uint32(math.MaxUint32 - 4)
 )
 
 // Error definitions
