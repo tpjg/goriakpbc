@@ -7,19 +7,6 @@ import (
 	"testing"
 )
 
-func parseVersion(version string) (major, minor int) {
-	var tmp []string
-	tmp = strings.Split(version, ".")
-	if len(tmp) > 0 {
-		major, _ = strconv.Atoi(tmp[0])
-	}
-	if len(tmp) > 1 {
-		minor, _ = strconv.Atoi(tmp[1])
-	}
-
-	return
-}
-
 func TestCounter(t *testing.T) {
 	// Preparations
 	client := setupConnection(t)
