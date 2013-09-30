@@ -32,7 +32,15 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	bucket := &Bucket{name: name, client: c, nval: *resp.Props.NVal, allowMult: *resp.Props.AllowMult, lastWriteWins: *resp.Props.LastWriteWins}
+
+	bucket := &Bucket{
+		name:          name,
+		client:        c,
+		nval:          resp.Props.GetNVal(),
+		allowMult:     resp.Props.GetAllowMult(),
+		lastWriteWins: resp.Props.GetLastWriteWins(),
+	}
+
 	return bucket, nil
 }
 
