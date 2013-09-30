@@ -2,8 +2,6 @@ package riak
 
 import (
 	"github.com/bmizerany/assert"
-	"strconv"
-	"strings"
 	"testing"
 )
 
