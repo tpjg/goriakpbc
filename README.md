@@ -99,6 +99,27 @@ mr.MapObjectValue(true)
 res, err := mr.Run()
 ```
 
+### Counters
+
+Example:
+
+```go
+// Get counter from bucket, loads value
+c = bucket.GetCounter("key")
+
+// Get counter without existing bucket instance, loads value
+c = cli.GetCounterFrom("bucket", "key")
+
+c.Value                  // 0
+c.Reload
+c.Increment(1)           // 1 on server, 0 in strucct
+c.IncrementAndReload(1)  // 2 on server and in struct
+c.Decrement(1)           // 1 on server, 2 in struct
+c.DecrementAndReload(1)  // 0 on server and in struct
+```
+
+The "AndReload" methods exist to take advantage of an option in update that returns the current value, thus saving a req/resp cycle.
+
 ### Riak Document Models
 
 Document Models, commonly referred to as ORM (Object-Relational Mapping) in other database drivers, maps Go structs to an object in Riak and supports links between objects. This is done by parsing the JSON data from an object in Riak and mapping it to a struct's fields.
