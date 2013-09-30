@@ -107,6 +107,51 @@ func (c *Counter) increment(amount int64, reload bool) (err error) {
 	return nil
 }
 
+// Destroy the counter
+func (c *Counter) Destroy() (err error) {
+	all := QuorumAll
+	f := false
+
+	req := &pb.RpbDelReq{
+		Bucket:       []byte(c.Bucket.name),
+		Key:          []byte(c.Key),
+		R:            &all,
+		W:            &all,
+		Pr:           &all,
+		Pw:           &all,
+		SloppyQuorum: &f,
+	}
+
+	for _, omap := range c.Options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			case "rq":
+				req.Rw = &v
+			case "w":
+				req.W = &v
+			case "dw":
+				req.Dw = &v
+			case "pw":
+				req.Pw = &v
+			}
+		}
+	}
+
+	err, conn := c.Bucket.client.request(req, rpbDelReq)
+	if err != nil {
+		return err
+	}
+	err = c.Bucket.client.response(conn, req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Get a counter
 func (b *Bucket) GetCounter(key string, options ...map[string]uint32) (c *Counter, err error) {
 	c = &Counter{

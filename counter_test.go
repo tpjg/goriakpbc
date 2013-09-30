@@ -90,4 +90,16 @@ func TestCounter(t *testing.T) {
 	c3, err := client.GetCounterFrom("counter_test.go", "counter_2")
 	assert.T(t, err == nil)
 	assert.T(t, c3.Value == (base+8))
+
+	// Destroy the first counter
+	err = c1.Destroy()
+	assert.T(t, err == nil)
+	err = c1.Reload()
+	assert.T(t, c1.Value == 0)
+
+	// Write a new value back to the first counter
+	err = c1.Increment(5)
+	assert.T(t, err == nil)
+	err = c1.Reload()
+	assert.T(t, c1.Value == 5)
 }
