@@ -87,4 +87,24 @@ func TestCounter(t *testing.T) {
 	assert.T(t, err == nil)
 	err = c1.Reload()
 	assert.T(t, c1.Value == 5)
+
+	// Increment a counter without a read
+	// First get the base (so we actually want to read in this case)... This is purely for testing purposes
+	c4, err := bucket.GetCounter("counter_3")
+	assert.T(t, err == nil)
+	base = c4.Value
+	// Grab the counter again, but this time don't load the value
+	c5, err := bucket.GetCounterWithoutLoad("counter_3")
+	assert.T(t, err == nil)
+
+	// Increment another counter
+	err = c5.Increment(3)
+	assert.T(t, err == nil)
+	err = c5.Increment(5)
+	assert.T(t, err == nil)
+
+	// Actually load the counter at this point
+	err = c5.Reload()
+	assert.T(t, err == nil)
+	assert.T(t, c5.Value == (base+8))
 }
