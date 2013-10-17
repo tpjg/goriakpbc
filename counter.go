@@ -165,6 +165,16 @@ func (b *Bucket) GetCounter(key string, options ...map[string]uint32) (c *Counte
 	return
 }
 
+func (b *Bucket) GetCounterWithoutLoad(key string, options ...map[string]uint32) (c *Counter, err error) {
+	c = &Counter{
+		Bucket:  b,
+		Key:     key,
+		Options: options,
+	}
+
+	return
+}
+
 // Get counter directly from a bucket, without creating a bucket first
 func (c *Client) GetCounterFrom(bucketname string, key string, options ...map[string]uint32) (counter *Counter, err error) {
 	var bucket *Bucket
