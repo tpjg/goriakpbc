@@ -643,6 +643,21 @@ func (o *One) Set(dest Resolver) (err error) {
 	return
 }
 
+// Set a link directly
+func (o *One) SetLink(a One) {
+	o.link = a.link
+}
+
+// Test for equality (bucket and key are equal)
+func (o *One) Equal(e One) bool {
+	return o.link.Bucket == e.link.Bucket && o.link.Key == o.link.Key
+}
+
+// Test if the link is empty (not set)
+func (o *One) Empty() bool {
+	return o.link.Bucket == "" && o.link.Key == ""
+}
+
 func (o *One) Get(dest Resolver) (err error) {
 	if o.client == nil {
 		return DestinationNotInitialized
@@ -700,7 +715,7 @@ func (m *Many) Len() int {
 // Return if a given Link is in the riak.Many slice
 func (m *Many) Contains(o One) bool {
 	for _, v := range *m {
-		if v.link.Bucket == o.link.Bucket && v.link.Key == o.link.Key {
+		if v.Equal(o) {
 			return true
 		}
 	}
