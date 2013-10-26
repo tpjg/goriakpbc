@@ -189,6 +189,11 @@ func TestModelWithManyLinks(t *testing.T) {
 	assert.T(t, len(doc3.Friends) == 1)
 	assert.T(t, doc3.Friends.Len() == 1)
 	assert.T(t, doc3.Friends[0].link.Key == "f1") // Check if the correct link is remaining
+	// Now remove the remaining link using RemoveLink
+	err = doc3.Friends.RemoveLink(doc3.Friends[0])
+	assert.T(t, err == nil)
+	assert.T(t, len(doc3.Friends) == 0)
+	assert.T(t, doc3.Friends.Len() == 0)
 }
 
 /*
