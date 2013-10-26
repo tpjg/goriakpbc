@@ -93,11 +93,12 @@ func TestModelWithLinks(t *testing.T) {
 
 	// Create a new DocumentModelWithLinks and save it, adding a link to the parent
 	doc := DocumentModelWithLinks{FieldS: "textinlinked", ALink: One{model: &parent}}
+	// Test emptyness
+	assert.T(t, doc.BLink.Empty())
 	err = doc.BLink.Set(&parent) // testing One.Set while we're at it
 	assert.T(t, err == nil)
 	err = client.New("testmodellinks.go", "TestModelKey", &doc)
 	assert.T(t, err == nil)
-	//err = client.Save(&doc)
 	err = doc.Save()
 	assert.T(t, err == nil)
 
@@ -120,6 +121,8 @@ func TestModelWithLinks(t *testing.T) {
 	assert.T(t, parent.FieldF == parent2.FieldF)
 	assert.T(t, parent.FieldB == parent2.FieldB)
 	assert.T(t, parent.Key() == parent2.Key())
+	// Test equality
+	assert.T(t, doc2.ALink.Equal(doc2.BLink))
 
 	// Cleanup
 	bucket, _ := client.Bucket("testmodel.go")
