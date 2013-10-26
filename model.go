@@ -676,6 +676,11 @@ func (m *Many) Add(dest Resolver) (err error) {
 	return err
 }
 
+// Add a given Link (One) directly
+func (m *Many) AddLink(o One) {
+	*m = append(*m, o)
+}
+
 // Remove a Link to the given Model (dest)
 func (m *Many) Remove(dest Resolver) (err error) {
 	_, _, _, _, err = check_dest(dest)
