@@ -680,6 +680,18 @@ func (m *Many) Remove(dest Resolver) (err error) {
 	return NotFound
 }
 
+// Remove a given Link (One) directly, e.g. so it can be used when iterating over a riak.Many slice
+func (m *Many) RemoveLink(o One) (err error) {
+	for i, v := range *m {
+		if v.link.Bucket == o.link.Bucket && v.link.Key == o.link.Key {
+			// Remove this element from the list
+			*m = append((*m)[:i], (*m)[i+1:]...)
+			return err
+		}
+	}
+	return NotFound
+}
+
 // Return the number of Links
 func (m *Many) Len() int {
 	return len(*m)
