@@ -697,9 +697,15 @@ func (m *Many) Len() int {
 	return len(*m)
 }
 
-//TODO: create "Remove" for Many links
-
-// Functions using the default Riak client.
+// Return if a given Link is in the riak.Many slice
+func (m *Many) Contains(o One) bool {
+	for _, v := range *m {
+		if v.link.Bucket == o.link.Bucket && v.link.Key == o.link.Key {
+			return true
+		}
+	}
+	return false
+}
 
 // Instantiate a new model (using the default client), setting the necessary fields, like the client.
 // If key is not empty that key will be used, otherwise Riak will choose a key.
