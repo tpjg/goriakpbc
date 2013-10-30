@@ -70,6 +70,8 @@ func IsWarning(err error) bool {
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "<nil> - json: cannot unmarshal") && strings.Contains(err.Error(), "into Go value of type") {
 			return true
+		} else if strings.HasPrefix(err.Error(), "<nil> - parsing") && strings.Contains(err.Error(), ": cannot parse") {
+			return true
 		} else if err == ModelDoesNotMatch {
 			return true
 		}
