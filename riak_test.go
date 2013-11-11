@@ -590,6 +590,15 @@ func TestMapReduce(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, len(res) == 1)
 
+	// Run mr on the bucket and test count function
+	mr = client.MapReduce()
+	mr.AddBucket("client_test_mr.go")
+	mr.ReduceObjectCount(true)
+	res, err = mr.Run()
+	assert.T(t, err == nil)
+	assert.T(t, len(res) == 1)
+	assert.T(t, string(res[0]) == "[2]") // Should return [2] for the two objects in this bucket
+
 	// Cleanup
 	obj1.Destroy()
 	obj2.Destroy()
