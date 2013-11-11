@@ -108,9 +108,29 @@ func (mr *MapReduce) MapErlang(module string, fun string, keep bool) {
 	mr.phases = append(mr.phases, m)
 }
 
+func (mr *MapReduce) ReduceErlang(module string, fun string, arg string, keep bool) {
+	m := `{"reduce":{"language":"erlang","module":"` + module + `","function":"` + fun + `"`
+	if arg != "" {
+		m = m + `,"arg":` + arg + `,"keep":`
+	} else {
+		m = m + `,"keep":`
+	}
+	if keep {
+		m = m + `true`
+	} else {
+		m = m + `false`
+	}
+	m = m + `}}`
+	mr.phases = append(mr.phases, m)
+}
+
 func (mr *MapReduce) MapObjectValue(keep bool) {
 	//{"map":{"language":"erlang","module":"riak_kv_mapreduce","function":"map_object_value"}}
 	mr.MapErlang("riak_kv_mapreduce", "map_object_value", keep)
+}
+
+func (mr *MapReduce) ReduceObjectCount(keep bool) {
+	mr.ReduceErlang("riak_kv_mapreduce", "reduce_count_inputs", `{"do_prereduce":true}`, keep)
 }
 
 // Generate the Query string
