@@ -86,7 +86,7 @@ mr.LinkBucket("otherbucket", false)
 mr.Map("function(v) {return [JSON.parse(v.values[0].data)];}", true)
 res, err := mr.Run()
 ```
-Map functions using Erlang instead of Javascript must be added using "MapErlang" instead of "Map" and there is a predefined function "MapObjectValue" that uses the riak_kv_mapreduce module's map_object_value function.
+Map functions using Erlang instead of Javascript must be added using "MapErlang" instead of "Map" and there is a predefined function "MapObjectValue" that uses the riak_kv_mapreduce module's map_object_value function. Reduce functions can be added similarly using "Reduce" and "ReduceErlang". For efficiently counting the number of objects the "ReduceObjectCount" can be used that uses the riak_kv_mapreduce module's reduce_count_inputs function.
 
 If the backend supports secondary indexes a whole bucket can be added as input to a MapReduce query. Alternatively range queries and single key queries on 2i are also supported:
 ```go
