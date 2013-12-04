@@ -89,7 +89,17 @@ func NewPool(addr string, count int) *Client {
 }
 
 // Connects to a Riak server.
-func (c *Client) Connect() (err error) {
+func (c *Client) Connect() error {
+	d := new(net.Dialer)
+	return c.tcpConnect(d)
+}
+
+func (c *Client) ConnectTimeout(timeout time.Duration) error {
+	d := &net.Dialer{Timeout: timeout}
+	return c.tcpConnect(d)
+}
+
+func (c *Client) tcpConnect(dialer *net.Dialer) (err error) {
 	tcpaddr, err := net.ResolveTCPAddr("tcp", c.addr)
 	if err != nil {
 		return err
@@ -102,11 +112,11 @@ func (c *Client) Connect() (err error) {
 		// Create multiple connections to Riak and send these to the conns channel for later use
 		c.conns = make(chan *net.TCPConn, c.conn_count)
 		for i := 0; i < c.conn_count; i++ {
-			newconn, err := net.DialTCP("tcp", nil, c.tcpaddr)
+			conn, err := dialer.Dial("tcp", tcpaddr.String())
 			if err != nil {
 				return err
 			}
-			c.conns <- newconn
+			c.conns <- conn.(*net.TCPConn)
 		}
 	}
 	c.connected = true
