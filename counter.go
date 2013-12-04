@@ -129,7 +129,7 @@ func (c *Counter) Destroy() (err error) {
 				req.R = &v
 			case "pr":
 				req.Pr = &v
-			case "rq":
+			case "rw":
 				req.Rw = &v
 			case "w":
 				req.W = &v

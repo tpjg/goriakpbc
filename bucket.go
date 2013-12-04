@@ -127,7 +127,7 @@ func (b *Bucket) Delete(key string, options ...map[string]uint32) (err error) {
 				req.R = &v
 			case "pr":
 				req.Pr = &v
-			case "rq":
+			case "rw":
 				req.Rw = &v
 			case "w":
 				req.W = &v

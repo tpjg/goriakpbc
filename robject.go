@@ -15,14 +15,14 @@ type Link struct {
 
 // An object van have siblings that can each have their own content
 type Sibling struct {
-	ContentType     string
-	Data            []byte
-	Links           []Link
-	Meta            map[string]string
-	Indexes         map[string]string
-	Vtag            string
-	LastMod         uint32
-	LastModUsecs    uint32
+	ContentType  string
+	Data         []byte
+	Links        []Link
+	Meta         map[string]string
+	Indexes      map[string]string
+	Vtag         string
+	LastMod      uint32
+	LastModUsecs uint32
 }
 
 // An RObject is an object or document that is or can be stored in Riak
@@ -128,7 +128,7 @@ func (obj *RObject) Destroy() (err error) {
 				req.R = &v
 			case "pr":
 				req.Pr = &v
-			case "rq":
+			case "rw":
 				req.Rw = &v
 			case "w":
 				req.W = &v
