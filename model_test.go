@@ -73,7 +73,7 @@ func TestModel(t *testing.T) {
 
 type DocumentModelWithLinks struct {
 	FieldS string
-	ALink  One "tag_as_parent"
+	ALink  One `riak:"tag_as_parent"`
 	BLink  One // Will automatically use own name as a tag when linking
 	Model
 }
@@ -134,7 +134,7 @@ func TestModelWithLinks(t *testing.T) {
 }
 
 type FriendLinks struct {
-	Friends Many "friend"
+	Friends Many `riak:"friend"`
 	Model
 }
 
