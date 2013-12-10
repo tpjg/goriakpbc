@@ -36,6 +36,7 @@ type Client struct {
 	conn_count   int
 	conns        chan *net.TCPConn
 	chanWait     time.Duration
+	connTimeout  time.Duration
 }
 
 /*
@@ -88,14 +89,18 @@ func NewPool(addr string, count int) *Client {
 	return NewClientPool(addr, count)
 }
 
+// Set the maximum time to wait for a connection to complete
+// By default Connect() will wait around 3 minutes.
+func (c *Client) SetConnectTimeout(timeout time.Duration) {
+	c.connTimeout = timeout
+}
+
 // Connects to a Riak server.
 func (c *Client) Connect() error {
 	d := new(net.Dialer)
-	return c.tcpConnect(d)
-}
-
-func (c *Client) ConnectTimeout(timeout time.Duration) error {
-	d := &net.Dialer{Timeout: timeout}
+	if c.connTimeout > 0 {
+		d.Timeout = c.connTimeout
+	}
 	return c.tcpConnect(d)
 }
 
