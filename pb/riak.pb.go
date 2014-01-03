@@ -13,6 +13,7 @@ var _ = proto.Marshal
 var _ = &json.SyntaxError{}
 var _ = math.Inf
 
+// Used by riak_repl bucket fixup
 type RpbBucketProps_RpbReplMode int32
 
 const (
@@ -42,9 +43,6 @@ func (x RpbBucketProps_RpbReplMode) Enum() *RpbBucketProps_RpbReplMode {
 }
 func (x RpbBucketProps_RpbReplMode) String() string {
 	return proto.EnumName(RpbBucketProps_RpbReplMode_name, int32(x))
-}
-func (x RpbBucketProps_RpbReplMode) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
 }
 func (x *RpbBucketProps_RpbReplMode) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(RpbBucketProps_RpbReplMode_value, data, "RpbBucketProps_RpbReplMode")
@@ -79,9 +77,6 @@ func (x RpbIndexReq_IndexQueryType) Enum() *RpbIndexReq_IndexQueryType {
 func (x RpbIndexReq_IndexQueryType) String() string {
 	return proto.EnumName(RpbIndexReq_IndexQueryType_name, int32(x))
 }
-func (x RpbIndexReq_IndexQueryType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(x.String())
-}
 func (x *RpbIndexReq_IndexQueryType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(RpbIndexReq_IndexQueryType_value, data, "RpbIndexReq_IndexQueryType")
 	if err != nil {
@@ -91,6 +86,7 @@ func (x *RpbIndexReq_IndexQueryType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Error response - may be generated for any Req
 type RpbErrorResp struct {
 	Errmsg           []byte  `protobuf:"bytes,1,req,name=errmsg" json:"errmsg,omitempty"`
 	Errcode          *uint32 `protobuf:"varint,2,req,name=errcode" json:"errcode,omitempty"`
@@ -115,6 +111,7 @@ func (m *RpbErrorResp) GetErrcode() uint32 {
 	return 0
 }
 
+// Get server info request - no message defined, just send RpbGetServerInfoReq message code
 type RpbGetServerInfoResp struct {
 	Node             []byte `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
 	ServerVersion    []byte `protobuf:"bytes,2,opt,name=server_version" json:"server_version,omitempty"`
@@ -139,6 +136,7 @@ func (m *RpbGetServerInfoResp) GetServerVersion() []byte {
 	return nil
 }
 
+// Key/value pair - used for user metadata, indexes, search doc fields
 type RpbPair struct {
 	Key              []byte `protobuf:"bytes,1,req,name=key" json:"key,omitempty"`
 	Value            []byte `protobuf:"bytes,2,opt,name=value" json:"value,omitempty"`
@@ -163,6 +161,7 @@ func (m *RpbPair) GetValue() []byte {
 	return nil
 }
 
+// Get bucket properties request
 type RpbGetBucketReq struct {
 	Bucket           []byte `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
@@ -179,6 +178,7 @@ func (m *RpbGetBucketReq) GetBucket() []byte {
 	return nil
 }
 
+// Get bucket properties response
 type RpbGetBucketResp struct {
 	Props            *RpbBucketProps `protobuf:"bytes,1,req,name=props" json:"props,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
@@ -195,6 +195,7 @@ func (m *RpbGetBucketResp) GetProps() *RpbBucketProps {
 	return nil
 }
 
+// Set bucket properties request
 type RpbSetBucketReq struct {
 	Bucket           []byte          `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Props            *RpbBucketProps `protobuf:"bytes,2,req,name=props" json:"props,omitempty"`
@@ -219,6 +220,7 @@ func (m *RpbSetBucketReq) GetProps() *RpbBucketProps {
 	return nil
 }
 
+// Reset bucket properties request
 type RpbResetBucketReq struct {
 	Bucket           []byte `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
@@ -235,6 +237,8 @@ func (m *RpbResetBucketReq) GetBucket() []byte {
 	return nil
 }
 
+// Module-Function pairs for commit hooks and other bucket properties
+// that take functions
 type RpbModFun struct {
 	Module           []byte `protobuf:"bytes,1,req,name=module" json:"module,omitempty"`
 	Function         []byte `protobuf:"bytes,2,req,name=function" json:"function,omitempty"`
@@ -259,6 +263,8 @@ func (m *RpbModFun) GetFunction() []byte {
 	return nil
 }
 
+// A commit hook, which may either be a modfun or a JavaScript named
+// function
 type RpbCommitHook struct {
 	Modfun           *RpbModFun `protobuf:"bytes,1,opt,name=modfun" json:"modfun,omitempty"`
 	Name             []byte     `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
@@ -283,29 +289,34 @@ func (m *RpbCommitHook) GetName() []byte {
 	return nil
 }
 
+// Bucket properties
 type RpbBucketProps struct {
-	NVal             *uint32                     `protobuf:"varint,1,opt,name=n_val" json:"n_val,omitempty"`
-	AllowMult        *bool                       `protobuf:"varint,2,opt,name=allow_mult" json:"allow_mult,omitempty"`
-	LastWriteWins    *bool                       `protobuf:"varint,3,opt,name=last_write_wins" json:"last_write_wins,omitempty"`
-	Precommit        []*RpbCommitHook            `protobuf:"bytes,4,rep,name=precommit" json:"precommit,omitempty"`
-	HasPrecommit     *bool                       `protobuf:"varint,5,opt,name=has_precommit,def=0" json:"has_precommit,omitempty"`
-	Postcommit       []*RpbCommitHook            `protobuf:"bytes,6,rep,name=postcommit" json:"postcommit,omitempty"`
-	HasPostcommit    *bool                       `protobuf:"varint,7,opt,name=has_postcommit,def=0" json:"has_postcommit,omitempty"`
-	ChashKeyfun      *RpbModFun                  `protobuf:"bytes,8,opt,name=chash_keyfun" json:"chash_keyfun,omitempty"`
-	Linkfun          *RpbModFun                  `protobuf:"bytes,9,opt,name=linkfun" json:"linkfun,omitempty"`
-	OldVclock        *uint32                     `protobuf:"varint,10,opt,name=old_vclock" json:"old_vclock,omitempty"`
-	YoungVclock      *uint32                     `protobuf:"varint,11,opt,name=young_vclock" json:"young_vclock,omitempty"`
-	BigVclock        *uint32                     `protobuf:"varint,12,opt,name=big_vclock" json:"big_vclock,omitempty"`
-	SmallVclock      *uint32                     `protobuf:"varint,13,opt,name=small_vclock" json:"small_vclock,omitempty"`
-	Pr               *uint32                     `protobuf:"varint,14,opt,name=pr" json:"pr,omitempty"`
-	R                *uint32                     `protobuf:"varint,15,opt,name=r" json:"r,omitempty"`
-	W                *uint32                     `protobuf:"varint,16,opt,name=w" json:"w,omitempty"`
-	Pw               *uint32                     `protobuf:"varint,17,opt,name=pw" json:"pw,omitempty"`
-	Dw               *uint32                     `protobuf:"varint,18,opt,name=dw" json:"dw,omitempty"`
-	Rw               *uint32                     `protobuf:"varint,19,opt,name=rw" json:"rw,omitempty"`
-	BasicQuorum      *bool                       `protobuf:"varint,20,opt,name=basic_quorum" json:"basic_quorum,omitempty"`
-	NotfoundOk       *bool                       `protobuf:"varint,21,opt,name=notfound_ok" json:"notfound_ok,omitempty"`
-	Backend          []byte                      `protobuf:"bytes,22,opt,name=backend" json:"backend,omitempty"`
+	// Declared in riak_core_app
+	NVal          *uint32          `protobuf:"varint,1,opt,name=n_val" json:"n_val,omitempty"`
+	AllowMult     *bool            `protobuf:"varint,2,opt,name=allow_mult" json:"allow_mult,omitempty"`
+	LastWriteWins *bool            `protobuf:"varint,3,opt,name=last_write_wins" json:"last_write_wins,omitempty"`
+	Precommit     []*RpbCommitHook `protobuf:"bytes,4,rep,name=precommit" json:"precommit,omitempty"`
+	HasPrecommit  *bool            `protobuf:"varint,5,opt,name=has_precommit,def=0" json:"has_precommit,omitempty"`
+	Postcommit    []*RpbCommitHook `protobuf:"bytes,6,rep,name=postcommit" json:"postcommit,omitempty"`
+	HasPostcommit *bool            `protobuf:"varint,7,opt,name=has_postcommit,def=0" json:"has_postcommit,omitempty"`
+	ChashKeyfun   *RpbModFun       `protobuf:"bytes,8,opt,name=chash_keyfun" json:"chash_keyfun,omitempty"`
+	// Declared in riak_kv_app
+	Linkfun     *RpbModFun `protobuf:"bytes,9,opt,name=linkfun" json:"linkfun,omitempty"`
+	OldVclock   *uint32    `protobuf:"varint,10,opt,name=old_vclock" json:"old_vclock,omitempty"`
+	YoungVclock *uint32    `protobuf:"varint,11,opt,name=young_vclock" json:"young_vclock,omitempty"`
+	BigVclock   *uint32    `protobuf:"varint,12,opt,name=big_vclock" json:"big_vclock,omitempty"`
+	SmallVclock *uint32    `protobuf:"varint,13,opt,name=small_vclock" json:"small_vclock,omitempty"`
+	Pr          *uint32    `protobuf:"varint,14,opt,name=pr" json:"pr,omitempty"`
+	R           *uint32    `protobuf:"varint,15,opt,name=r" json:"r,omitempty"`
+	W           *uint32    `protobuf:"varint,16,opt,name=w" json:"w,omitempty"`
+	Pw          *uint32    `protobuf:"varint,17,opt,name=pw" json:"pw,omitempty"`
+	Dw          *uint32    `protobuf:"varint,18,opt,name=dw" json:"dw,omitempty"`
+	Rw          *uint32    `protobuf:"varint,19,opt,name=rw" json:"rw,omitempty"`
+	BasicQuorum *bool      `protobuf:"varint,20,opt,name=basic_quorum" json:"basic_quorum,omitempty"`
+	NotfoundOk  *bool      `protobuf:"varint,21,opt,name=notfound_ok" json:"notfound_ok,omitempty"`
+	// Used by riak_kv_multi_backend
+	Backend []byte `protobuf:"bytes,22,opt,name=backend" json:"backend,omitempty"`
+	// Used by riak_search bucket fixup
 	Search           *bool                       `protobuf:"varint,23,opt,name=search" json:"search,omitempty"`
 	Repl             *RpbBucketProps_RpbReplMode `protobuf:"varint,24,opt,name=repl,enum=RpbBucketProps_RpbReplMode" json:"repl,omitempty"`
 	XXX_unrecognized []byte                      `json:"-"`
@@ -483,9 +494,10 @@ func (m *RpbBucketProps) GetRepl() RpbBucketProps_RpbReplMode {
 	if m != nil && m.Repl != nil {
 		return *m.Repl
 	}
-	return 0
+	return RpbBucketProps_FALSE
 }
 
+// Get ClientId Request - no message defined, just send RpbGetClientIdReq message code
 type RpbGetClientIdResp struct {
 	ClientId         []byte `protobuf:"bytes,1,req,name=client_id" json:"client_id,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
@@ -518,6 +530,7 @@ func (m *RpbSetClientIdReq) GetClientId() []byte {
 	return nil
 }
 
+// Get Request - retrieve bucket/key
 type RpbGetReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Key              []byte  `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
@@ -622,6 +635,7 @@ func (m *RpbGetReq) GetNVal() uint32 {
 	return 0
 }
 
+// Get Response - if the record was not found there will be no content/vclock
 type RpbGetResp struct {
 	Content          []*RpbContent `protobuf:"bytes,1,rep,name=content" json:"content,omitempty"`
 	Vclock           []byte        `protobuf:"bytes,2,opt,name=vclock" json:"vclock,omitempty"`
@@ -654,6 +668,8 @@ func (m *RpbGetResp) GetUnchanged() bool {
 	return false
 }
 
+// Put request - if options.return_body is set then the updated metadata/data for
+//               the key will be returned.
 type RpbPutReq struct {
 	Bucket           []byte      `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Key              []byte      `protobuf:"bytes,2,opt,name=key" json:"key,omitempty"`
@@ -782,6 +798,7 @@ func (m *RpbPutReq) GetNVal() uint32 {
 	return 0
 }
 
+// Put response - same as get response with optional key if one was generated
 type RpbPutResp struct {
 	Content          []*RpbContent `protobuf:"bytes,1,rep,name=content" json:"content,omitempty"`
 	Vclock           []byte        `protobuf:"bytes,2,opt,name=vclock" json:"vclock,omitempty"`
@@ -814,6 +831,7 @@ func (m *RpbPutResp) GetKey() []byte {
 	return nil
 }
 
+// Delete request
 type RpbDelReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Key              []byte  `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
@@ -918,6 +936,7 @@ func (m *RpbDelReq) GetNVal() uint32 {
 	return 0
 }
 
+// List buckets request
 type RpbListBucketsReq struct {
 	Timeout          *uint32 `protobuf:"varint,1,opt,name=timeout" json:"timeout,omitempty"`
 	Stream           *bool   `protobuf:"varint,2,opt,name=stream" json:"stream,omitempty"`
@@ -942,6 +961,8 @@ func (m *RpbListBucketsReq) GetStream() bool {
 	return false
 }
 
+// List buckets response - one or more of these packets will be sent
+// the last one will have done set true (and may not have any buckets in it)
 type RpbListBucketsResp struct {
 	Buckets          [][]byte `protobuf:"bytes,1,rep,name=buckets" json:"buckets,omitempty"`
 	Done             *bool    `protobuf:"varint,2,opt,name=done" json:"done,omitempty"`
@@ -966,6 +987,7 @@ func (m *RpbListBucketsResp) GetDone() bool {
 	return false
 }
 
+// List keys in bucket request
 type RpbListKeysReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Timeout          *uint32 `protobuf:"varint,2,opt,name=timeout" json:"timeout,omitempty"`
@@ -990,6 +1012,8 @@ func (m *RpbListKeysReq) GetTimeout() uint32 {
 	return 0
 }
 
+// List keys in bucket response - one or more of these packets will be sent
+// the last one will have done set true (and may not have any keys in it)
 type RpbListKeysResp struct {
 	Keys             [][]byte `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty"`
 	Done             *bool    `protobuf:"varint,2,opt,name=done" json:"done,omitempty"`
@@ -1014,6 +1038,7 @@ func (m *RpbListKeysResp) GetDone() bool {
 	return false
 }
 
+// Map/Reduce request
 type RpbMapRedReq struct {
 	Request          []byte `protobuf:"bytes,1,req,name=request" json:"request,omitempty"`
 	ContentType      []byte `protobuf:"bytes,2,req,name=content_type" json:"content_type,omitempty"`
@@ -1038,6 +1063,9 @@ func (m *RpbMapRedReq) GetContentType() []byte {
 	return nil
 }
 
+// Map/Reduce response
+// one or more of these packets will be sent the last one will have done set
+// true (and may not have phase/data in it)
 type RpbMapRedResp struct {
 	Phase            *uint32 `protobuf:"varint,1,opt,name=phase" json:"phase,omitempty"`
 	Response         []byte  `protobuf:"bytes,2,opt,name=response" json:"response,omitempty"`
@@ -1070,6 +1098,7 @@ func (m *RpbMapRedResp) GetDone() bool {
 	return false
 }
 
+// Secondary Index query request
 type RpbIndexReq struct {
 	Bucket           []byte                      `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Index            []byte                      `protobuf:"bytes,2,req,name=index" json:"index,omitempty"`
@@ -1106,7 +1135,7 @@ func (m *RpbIndexReq) GetQtype() RpbIndexReq_IndexQueryType {
 	if m != nil && m.Qtype != nil {
 		return *m.Qtype
 	}
-	return 0
+	return RpbIndexReq_eq
 }
 
 func (m *RpbIndexReq) GetKey() []byte {
@@ -1158,6 +1187,7 @@ func (m *RpbIndexReq) GetContinuation() []byte {
 	return nil
 }
 
+// Secondary Index query response
 type RpbIndexResp struct {
 	Keys             [][]byte   `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty"`
 	Results          []*RpbPair `protobuf:"bytes,2,rep,name=results" json:"results,omitempty"`
@@ -1198,6 +1228,9 @@ func (m *RpbIndexResp) GetDone() bool {
 	return false
 }
 
+// added solely for riak_cs currently
+// for folding over a bucket and returning
+// objects.
 type RpbCSBucketReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	StartKey         []byte  `protobuf:"bytes,2,req,name=start_key" json:"start_key,omitempty"`
@@ -1265,6 +1298,7 @@ func (m *RpbCSBucketReq) GetMaxResults() uint32 {
 	return 0
 }
 
+// return for CS bucket fold
 type RpbCSBucketResp struct {
 	Objects          []*RpbIndexObject `protobuf:"bytes,1,rep,name=objects" json:"objects,omitempty"`
 	Continuation     []byte            `protobuf:"bytes,2,opt,name=continuation" json:"continuation,omitempty"`
@@ -1321,6 +1355,8 @@ func (m *RpbIndexObject) GetObject() *RpbGetResp {
 	return nil
 }
 
+// Content message included in get/put responses
+// Holds the value and associated metadata
 type RpbContent struct {
 	Value            []byte     `protobuf:"bytes,1,req,name=value" json:"value,omitempty"`
 	ContentType      []byte     `protobuf:"bytes,2,opt,name=content_type" json:"content_type,omitempty"`
@@ -1417,6 +1453,7 @@ func (m *RpbContent) GetDeleted() bool {
 	return false
 }
 
+// Link metadata
 type RpbLink struct {
 	Bucket           []byte `protobuf:"bytes,1,opt,name=bucket" json:"bucket,omitempty"`
 	Key              []byte `protobuf:"bytes,2,opt,name=key" json:"key,omitempty"`
@@ -1449,6 +1486,7 @@ func (m *RpbLink) GetTag() []byte {
 	return nil
 }
 
+// Counter update request
 type RpbCounterUpdateReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Key              []byte  `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
@@ -1513,6 +1551,7 @@ func (m *RpbCounterUpdateReq) GetReturnvalue() bool {
 	return false
 }
 
+// Counter update response? No message | error response
 type RpbCounterUpdateResp struct {
 	Value            *int64 `protobuf:"zigzag64,1,opt,name=value" json:"value,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
@@ -1529,6 +1568,7 @@ func (m *RpbCounterUpdateResp) GetValue() int64 {
 	return 0
 }
 
+// counter value
 type RpbCounterGetReq struct {
 	Bucket           []byte  `protobuf:"bytes,1,req,name=bucket" json:"bucket,omitempty"`
 	Key              []byte  `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
@@ -1585,6 +1625,7 @@ func (m *RpbCounterGetReq) GetNotfoundOk() bool {
 	return false
 }
 
+// Counter value response
 type RpbCounterGetResp struct {
 	Value            *int64 `protobuf:"zigzag64,1,opt,name=value" json:"value,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
@@ -1597,6 +1638,145 @@ func (*RpbCounterGetResp) ProtoMessage()    {}
 func (m *RpbCounterGetResp) GetValue() int64 {
 	if m != nil && m.Value != nil {
 		return *m.Value
+	}
+	return 0
+}
+
+type RpbSearchDoc struct {
+	Fields           []*RpbPair `protobuf:"bytes,1,rep,name=fields" json:"fields,omitempty"`
+	XXX_unrecognized []byte     `json:"-"`
+}
+
+func (m *RpbSearchDoc) Reset()         { *m = RpbSearchDoc{} }
+func (m *RpbSearchDoc) String() string { return proto.CompactTextString(m) }
+func (*RpbSearchDoc) ProtoMessage()    {}
+
+func (m *RpbSearchDoc) GetFields() []*RpbPair {
+	if m != nil {
+		return m.Fields
+	}
+	return nil
+}
+
+// These were missing from the 1.4 version of the source riak_kv.proto file,
+// and are here from monkey+c, monkey+v.
+//
+type RpbSearchQueryReq struct {
+	Q                []byte   `protobuf:"bytes,1,req,name=q" json:"q,omitempty"`
+	Index            []byte   `protobuf:"bytes,2,req,name=index" json:"index,omitempty"`
+	Rows             *uint32  `protobuf:"varint,3,opt,name=rows" json:"rows,omitempty"`
+	Start            *uint32  `protobuf:"varint,4,opt,name=start" json:"start,omitempty"`
+	Sort             []byte   `protobuf:"bytes,5,opt,name=sort" json:"sort,omitempty"`
+	Filter           []byte   `protobuf:"bytes,6,opt,name=filter" json:"filter,omitempty"`
+	Df               []byte   `protobuf:"bytes,7,opt,name=df" json:"df,omitempty"`
+	Op               []byte   `protobuf:"bytes,8,opt,name=op" json:"op,omitempty"`
+	Fl               [][]byte `protobuf:"bytes,9,rep,name=fl" json:"fl,omitempty"`
+	Presort          []byte   `protobuf:"bytes,10,opt,name=presort" json:"presort,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *RpbSearchQueryReq) Reset()         { *m = RpbSearchQueryReq{} }
+func (m *RpbSearchQueryReq) String() string { return proto.CompactTextString(m) }
+func (*RpbSearchQueryReq) ProtoMessage()    {}
+
+func (m *RpbSearchQueryReq) GetQ() []byte {
+	if m != nil {
+		return m.Q
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetIndex() []byte {
+	if m != nil {
+		return m.Index
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetRows() uint32 {
+	if m != nil && m.Rows != nil {
+		return *m.Rows
+	}
+	return 0
+}
+
+func (m *RpbSearchQueryReq) GetStart() uint32 {
+	if m != nil && m.Start != nil {
+		return *m.Start
+	}
+	return 0
+}
+
+func (m *RpbSearchQueryReq) GetSort() []byte {
+	if m != nil {
+		return m.Sort
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetFilter() []byte {
+	if m != nil {
+		return m.Filter
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetDf() []byte {
+	if m != nil {
+		return m.Df
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetOp() []byte {
+	if m != nil {
+		return m.Op
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetFl() [][]byte {
+	if m != nil {
+		return m.Fl
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryReq) GetPresort() []byte {
+	if m != nil {
+		return m.Presort
+	}
+	return nil
+}
+
+type RpbSearchQueryResp struct {
+	Docs             []*RpbSearchDoc `protobuf:"bytes,1,rep,name=docs" json:"docs,omitempty"`
+	MaxScore         *float32        `protobuf:"fixed32,2,opt,name=max_score" json:"max_score,omitempty"`
+	NumFound         *uint32         `protobuf:"varint,3,opt,name=num_found" json:"num_found,omitempty"`
+	XXX_unrecognized []byte          `json:"-"`
+}
+
+func (m *RpbSearchQueryResp) Reset()         { *m = RpbSearchQueryResp{} }
+func (m *RpbSearchQueryResp) String() string { return proto.CompactTextString(m) }
+func (*RpbSearchQueryResp) ProtoMessage()    {}
+
+func (m *RpbSearchQueryResp) GetDocs() []*RpbSearchDoc {
+	if m != nil {
+		return m.Docs
+	}
+	return nil
+}
+
+func (m *RpbSearchQueryResp) GetMaxScore() float32 {
+	if m != nil && m.MaxScore != nil {
+		return *m.MaxScore
+	}
+	return 0
+}
+
+func (m *RpbSearchQueryResp) GetNumFound() uint32 {
+	if m != nil && m.NumFound != nil {
+		return *m.NumFound
 	}
 	return 0
 }

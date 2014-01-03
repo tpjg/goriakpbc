@@ -390,3 +390,32 @@ message RpbCounterGetReq {
 message RpbCounterGetResp {
     optional sint64 value = 1;
 }
+
+
+message RpbSearchDoc {
+    repeated RpbPair fields = 1;
+}
+
+
+// These were missing from the 1.4 version of the source riak_kv.proto file,
+// and are here from monkey+c, monkey+v.
+//
+message RpbSearchQueryReq {
+    required bytes q = 1;  // Query string
+    required bytes index = 2;  // Index
+    optional uint32 rows = 3;  // Limit rows
+    optional uint32 start = 4;  // Starting offset
+    optional bytes sort = 5;  // Sort order
+    optional bytes filter = 6;  // Inline fields filtering query
+    optional bytes df = 7;  // Default field
+    optional bytes op = 8;  // Default op
+    repeated bytes fl = 9;  // Return fields limit (for ids only, generally)
+    optional bytes presort = 10; // Presort (key / score)
+}
+
+message RpbSearchQueryResp {
+    repeated RpbSearchDoc docs = 1; // Result documents
+    optional float max_score = 2; // Maximum score
+    optional uint32 num_found = 3; // Number of results
+}
+
