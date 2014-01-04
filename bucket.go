@@ -11,6 +11,7 @@ type Bucket struct {
 	nval          uint32
 	allowMult     bool
 	lastWriteWins bool
+	search        bool
 }
 
 // Return a new bucket object
@@ -69,9 +70,30 @@ func (b *Bucket) LastWriteWins() bool {
 	return b.lastWriteWins
 }
 
+// Return the search property of a bucket
+func (b *Bucket) Search() bool {
+	return b.search
+}
+
+// Set the search property of a bucket
+func (b *Bucket) SetSearch(search bool) (err error) {
+	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins, Search: &search}
+	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
+	err, conn := b.client.request(req, rpbSetBucketReq)
+	if err != nil {
+		return err
+	}
+	err = b.client.response(conn, req)
+	if err != nil {
+		return err
+	}
+	b.search = search
+	return nil
+}
+
 // Set the nval property of a bucket
 func (b *Bucket) SetNVal(nval uint32) (err error) {
-	props := &pb.RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins}
+	props := &pb.RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins, Search: &b.search}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
@@ -87,7 +109,7 @@ func (b *Bucket) SetNVal(nval uint32) (err error) {
 
 // Set the allowMult property of a bucket
 func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
-	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult, LastWriteWins: &b.lastWriteWins}
+	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult, LastWriteWins: &b.lastWriteWins, Search: &b.search}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
@@ -103,7 +125,7 @@ func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 
 // Set the lastWriteWins property of a bucket
 func (b *Bucket) SetLastWriteWins(lastWriteWins bool) (err error) {
-	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &lastWriteWins}
+	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &lastWriteWins, Search: &b.search}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
