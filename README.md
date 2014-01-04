@@ -120,6 +120,27 @@ c.DecrementAndReload(1)  // 0 on server and in struct
 
 The "AndReload" methods exist to take advantage of an option in update that returns the current value, thus saving a req/resp cycle.
 
+### Search
+
+Example:
+
+```go
+
+bucket := client.NewBucket("rocket_launchers")
+bucket.SetSearch(true)
+
+if docs, err := client.Search(&Search{Q: "quake", Index: "rocket_launchers"}); err == nil {
+    for i, doc := range docs {
+        fmt.Printf("Rocket launcher number: %s has key: %s\n", i, doc["key"])
+    }
+}
+
+```
+
+The `Search` struct has fields for row count, start, sorting, etc.  See
+http://godoc.org/github.com/tpjg/goriakpbc#Search for all of them.
+
+
 ### Riak Document Models
 
 Document Models, commonly referred to as ORM (Object-Relational Mapping) in other database drivers, maps Go structs to an object in Riak and supports links between objects. This is done by parsing the JSON data from an object in Riak and mapping it to a struct's fields.
