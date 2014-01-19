@@ -616,7 +616,7 @@ func TestNewModelInErrors(t *testing.T) {
 	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
 
-func stringInSlice(a string, list []string){
+func stringInSlice(a string, list []string) bool{
 	for _, val := range list {
 		if val == a {
 			return true
