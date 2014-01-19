@@ -683,13 +683,13 @@ func TestMultipleIndexesInModel(t * testing.T){
 	assert.T(t, stringInSlice("Bob", keys))
 	// Get a list of keys using the index queries
 	// Expecting "Bob"
-	keys, err := bucket.IndexQuery("phone_int", strconv.Itoa(67890))
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(67890))
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 2)
 	assert.T(t, keys[0] == "Bob")
 
 	// Expecting "Alice"
-	keys, err := bucket.IndexQuery("phone_int", strconv.Itoa(99999))
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(99999))
 	assert.T(t, err == nil)
 	assert.T(t, len(keys) == 2)
 	assert.T(t, keys[0] == "Alice")
