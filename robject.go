@@ -80,7 +80,7 @@ func (obj *RObject) Store() (err error) {
 	// Add the indexes
 	for k, vals := range obj.MultiIndexes {
 		for _, v := range vals {
-			req.Content.MultiIndexes = append(req.Content.MultiIndexes,
+			req.Content.Indexes = append(req.Content.Indexes,
 				&pb.RpbPair{Key: []byte(k), Value: []byte(v)})
 		}
 	}
@@ -180,7 +180,7 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 				obj.Siblings[i].Meta[string(meta.Key)] = string(meta.Value)
 			}
 			obj.Siblings[i].MultiIndexes = make(map[string][]string)
-			for _, index := range content.MultiIndexes {
+			for _, index := range content.Indexes {
 				if _, ok := obj.Siblings[i].MultiIndexes[string(index.Key)]; ok {
 					obj.Siblings[i].MultiIndexes[string(index.Key)] = append(obj.Siblings[i].MultiIndexes[string(index.Key)],
 						string(index.Value))
@@ -205,7 +205,7 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 			obj.Meta[string(meta.Key)] = string(meta.Value)
 		}
 		obj.MultiIndexes = make(map[string][]string)
-		for _, index := range resp.Content[0].MultiIndexes {
+		for _, index := range resp.Content[0].Indexes {
 			if _, ok := obj.MultiIndexes[string(index.Key)]; ok {
 				obj.MultiIndexes[string(index.Key)] = append(obj.MultiIndexes[string(index.Key)],
 					string(index.Value))
