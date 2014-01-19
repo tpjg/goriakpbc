@@ -567,9 +567,9 @@ func (m *Model) Vclock() (vclock []byte) {
 
 // Return the object's indexes.  This allows an application to set custom secondary
 // indexes on the object for later querying.
-func (m *Model) Indexes() map[string]string {
+func (m *Model) Indexes() map[string][]string {
 	if m.robject.Indexes == nil {
-		m.robject.Indexes = make(map[string]string)
+		m.robject.Indexes = make(map[string][]string)
 	}
 	return m.robject.Indexes
 }
