@@ -639,8 +639,7 @@ func TestMultipleIndexesInModel(t * testing.T){
 	err := client.New("client_test.go", "Bob", &doc)
 	assert.T(t, err == nil)
 	indexes := doc.Indexes()
-	indexes["phone_int"] = []string{"12345"}
-	indexes["phone_int"] = []string{"67890"}
+	indexes["phone_int"] = []string{"12345", "67890"}
 	err = doc.Save()
 	assert.T(t, err == nil)
 
@@ -649,8 +648,7 @@ func TestMultipleIndexesInModel(t * testing.T){
 	err = client.NewModelIn("client_test.go", "Alice", &doc2)
 	assert.T(t, err == nil)
 	indexes = doc2.Indexes()
-	indexes["phone_int"] = []string{"12345"}
-	indexes["phone_int"] = []string{"99999"}
+	indexes["phone_int"] = []string{"12345", "99999"}
 	err = doc2.Save()
 	assert.T(t, err == nil)
 
@@ -687,13 +685,13 @@ func TestMultipleIndexesInModel(t * testing.T){
 	// Expecting "Bob"
 	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(67890))
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 2)
+	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "Bob")
 
 	// Expecting "Alice"
 	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(99999))
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 2)
+	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "Alice")
 
 	// Cleanup
