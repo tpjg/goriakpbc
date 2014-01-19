@@ -157,7 +157,7 @@ func TestObjectsWithSiblings(t *testing.T) {
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 1")
 	obj.Meta["mymeta"] = "meta1"
-	obj.Indexes["myindex_bin"] = []string{"index1"}
+	obj.MultiIndexes["myindex_bin"] = []string{"index1"}
 	obj.LinkTo(target, "mytag")
 
 	err = obj.Store()
@@ -167,7 +167,7 @@ func TestObjectsWithSiblings(t *testing.T) {
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 2")
 	obj.Meta["mymeta"] = "meta2"
-	obj.Indexes["myindex_bin"] = []string{"index2"}
+	obj.MultiIndexes["myindex_bin"] = []string{"index2"}
 	err = obj.Store()
 	assert.T(t, err == nil)
 
@@ -180,7 +180,7 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, len(obj.Siblings[1].Data) > 0)
 	assert.T(t, string(obj.Siblings[0].Data) != string(obj.Siblings[1].Data))
 	assert.T(t, obj.Siblings[0].Meta["mymeta"] != obj.Siblings[1].Meta["mymeta"])
-	assert.T(t, obj.Siblings[0].Indexes["myindex_bin"][0] != obj.Siblings[1].Indexes["myindex_bin"][0])
+	assert.T(t, obj.Siblings[0].MultiIndexes["myindex_bin"][0] != obj.Siblings[1].MultiIndexes["myindex_bin"][0])
 	assert.T(t, len(obj.Siblings[0].Links) != len(obj.Siblings[1].Links))
 
 	// Cleanup
@@ -325,7 +325,7 @@ func TestObjectMetadata(t *testing.T) {
 	assert.T(t, err == nil)
 }
 
-func TestObjectIndexes(t *testing.T) {
+func TestObjectMultiIndexes(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -337,8 +337,8 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, obj != nil)
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("indexes to keep")
-	obj.Indexes["test_int"] = []string{strconv.Itoa(123)}
-	obj.Indexes["and_bin"] = []string{"blurb"}
+	obj.MultiIndexes["test_int"] = []string{strconv.Itoa(123)}
+	obj.MultiIndexes["and_bin"] = []string{"blurb"}
 	err := obj.Store()
 	assert.T(t, err == nil)
 	// Create a second object
@@ -346,8 +346,8 @@ func TestObjectIndexes(t *testing.T) {
 	assert.T(t, obj2 != nil)
 	obj2.ContentType = "text/plain"
 	obj2.Data = []byte("indexes to keep")
-	obj2.Indexes["test_int"] = []string{strconv.Itoa(124)}
-	obj2.Indexes["and_bin"] = []string{"blurb"}
+	obj2.MultiIndexes["test_int"] = []string{strconv.Itoa(124)}
+	obj2.MultiIndexes["and_bin"] = []string{"blurb"}
 	err = obj2.Store()
 	assert.T(t, err == nil)
 
@@ -355,8 +355,8 @@ func TestObjectIndexes(t *testing.T) {
 	obj, err = bucket.Get("indexes")
 	assert.T(t, err == nil)
 	assert.T(t, obj != nil)
-	assert.T(t, obj.Indexes["test_int"][0] == strconv.Itoa(123))
-	assert.T(t, obj.Indexes["and_bin"][0] == "blurb")
+	assert.T(t, obj.MultiIndexes["test_int"][0] == strconv.Itoa(123))
+	assert.T(t, obj.MultiIndexes["and_bin"][0] == "blurb")
 
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))

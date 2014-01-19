@@ -616,7 +616,7 @@ func TestNewModelInErrors(t *testing.T) {
 	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
 
-func stringInSlice(a string, list []string){
+func stringInSlice(a string, list []string) bool{
 	for _, val := range list {
 		if val == a {
 			return true
@@ -626,7 +626,7 @@ func stringInSlice(a string, list []string){
 }
 
 // Testing multiple values for the same secondary index
-func TestMultipleIndexesInModel(t * testing.T){
+func TestMultipleMultiIndexesInModel(t * testing.T){
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -637,9 +637,8 @@ func TestMultipleIndexesInModel(t * testing.T){
 	doc := DocumentModel{FieldS: "blurb", FieldF: 123, FieldB: true}
 	err := client.New("client_test.go", "Bob", &doc)
 	assert.T(t, err == nil)
-	indexes := doc.Indexes()
-	indexes["phone_int"] = []string{"12345"}
-	indexes["phone_int"] = []string{"67890"}
+	indexes := doc.MultiIndexes()
+	indexes["phone_int"] = []string{"12345", "67890"}
 	err = doc.Save()
 	assert.T(t, err == nil)
 
@@ -647,17 +646,16 @@ func TestMultipleIndexesInModel(t * testing.T){
 	doc2 := DocumentModel{FieldS: "blurb", FieldF: 124, FieldB: true}
 	err = client.NewModelIn("client_test.go", "Alice", &doc2)
 	assert.T(t, err == nil)
-	indexes = doc2.Indexes()
-	indexes["phone_int"] = []string{"12345"}
-	indexes["phone_int"] = []string{"99999"}
+	indexes = doc2.MultiIndexes()
+	indexes["phone_int"] = []string{"12345", "99999"}
 	err = doc2.Save()
 	assert.T(t, err == nil)
 
 	// Fetch the object and check
 	err = client.LoadModelFrom("client_test.go", "Bob", &doc)
 	assert.T(t, err == nil)
-	assert.T(t, stringInSlice(strconv.Itoa(12345), doc.Indexes()["phone_int"]))
-	assert.T(t, stringInSlice(strconv.Itoa(67890), doc.Indexes()["phone_int"]))
+	assert.T(t, stringInSlice(strconv.Itoa(12345), doc.MultiIndexes()["phone_int"]))
+	assert.T(t, stringInSlice(strconv.Itoa(67890), doc.MultiIndexes()["phone_int"]))
 
 	// Get a list of keys using the index queries
 	// Expecting two keys
@@ -683,15 +681,15 @@ func TestMultipleIndexesInModel(t * testing.T){
 	assert.T(t, stringInSlice("Bob", keys))
 	// Get a list of keys using the index queries
 	// Expecting "Bob"
-	keys, err := bucket.IndexQuery("phone_int", strconv.Itoa(67890))
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(67890))
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 2)
+	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "Bob")
 
 	// Expecting "Alice"
-	keys, err := bucket.IndexQuery("phone_int", strconv.Itoa(99999))
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(99999))
 	assert.T(t, err == nil)
-	assert.T(t, len(keys) == 2)
+	assert.T(t, len(keys) == 1)
 	assert.T(t, keys[0] == "Alice")
 
 	// Cleanup
@@ -702,7 +700,7 @@ func TestMultipleIndexesInModel(t * testing.T){
 
 }
 
-func TestIndexesInModel(t *testing.T) {
+func TestMultiIndexesInModel(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -713,7 +711,7 @@ func TestIndexesInModel(t *testing.T) {
 	doc := DocumentModel{FieldS: "blurb", FieldF: 123, FieldB: true}
 	err := client.New("client_test.go", "indexes", &doc)
 	assert.T(t, err == nil)
-	indexes := doc.Indexes()
+	indexes := doc.MultiIndexes()
 	indexes["test_int"] = []string{"123"}
 	indexes["and_bin"] = []string{"blurb"}
 	err = doc.Save()
@@ -723,7 +721,7 @@ func TestIndexesInModel(t *testing.T) {
 	doc2 := DocumentModel{FieldS: "blurb", FieldF: 124, FieldB: true}
 	err = client.NewModelIn("client_test.go", "indexes2", &doc2)
 	assert.T(t, err == nil)
-	indexes = doc2.Indexes()
+	indexes = doc2.MultiIndexes()
 	indexes["test_int"] = []string{"124"}
 	indexes["and_bin"] = []string{"blurb"}
 	err = doc2.Save()
@@ -732,8 +730,8 @@ func TestIndexesInModel(t *testing.T) {
 	// Fetch the object and check
 	err = client.LoadModelFrom("client_test.go", "indexes", &doc)
 	assert.T(t, err == nil)
-	assert.T(t, doc.Indexes()["test_int"][0] == strconv.Itoa(123))
-	assert.T(t, doc.Indexes()["and_bin"][0] == "blurb")
+	assert.T(t, doc.MultiIndexes()["test_int"][0] == strconv.Itoa(123))
+	assert.T(t, doc.MultiIndexes()["and_bin"][0] == "blurb")
 
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))

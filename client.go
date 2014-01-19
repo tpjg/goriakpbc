@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/estebarb/goriakpbc/pb"
 )
 
 /*

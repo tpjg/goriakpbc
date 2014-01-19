@@ -1,7 +1,7 @@
 package riak
 
 import (
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/estebarb/goriakpbc/pb"
 )
 
 // Implements access to a bucket and its properties
@@ -186,7 +186,7 @@ func (c *Client) DeleteFrom(bucketname string, key string, options ...map[string
 func (b *Bucket) NewObject(key string, options ...map[string]uint32) *RObject {
 	obj := &RObject{Key: key, Bucket: b,
 		Links: make([]Link, 0),
-		Meta:  make(map[string]string), Indexes: make(map[string][]string),
+		Meta:  make(map[string]string), MultiIndexes: make(map[string][]string),
 		Options: options}
 	return obj
 }
