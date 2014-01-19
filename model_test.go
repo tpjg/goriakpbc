@@ -2,6 +2,7 @@ package riak
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bmizerany/assert"
 	"strconv"
 	"strings"
@@ -656,6 +657,7 @@ func TestMultipleIndexesInModel(t * testing.T){
 	// Fetch the object and check
 	err = client.LoadModelFrom("client_test.go", "Bob", &doc)
 	assert.T(t, err == nil)
+	fmt.Println(doc.Indexes()["phone_int"])
 	assert.T(t, stringInSlice(strconv.Itoa(12345), doc.Indexes()["phone_int"]))
 	assert.T(t, stringInSlice(strconv.Itoa(67890), doc.Indexes()["phone_int"]))
 
