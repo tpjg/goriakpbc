@@ -2,7 +2,6 @@ package riak
 
 import (
 	"errors"
-	"fmt"
 	"github.com/bmizerany/assert"
 	"strconv"
 	"strings"
@@ -617,7 +616,7 @@ func TestNewModelInErrors(t *testing.T) {
 	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
 
-func stringInSlice(a string, list []string) bool{
+func stringInSlice(a string, list []string) bool {
 	for _, val := range list {
 		if val == a {
 			return true
@@ -627,7 +626,7 @@ func stringInSlice(a string, list []string) bool{
 }
 
 // Testing multiple values for the same secondary index
-func TestMultipleMultiIndexesInModel(t * testing.T){
+func TestMultipleMultiIndexesInModel(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -655,7 +654,6 @@ func TestMultipleMultiIndexesInModel(t * testing.T){
 	// Fetch the object and check
 	err = client.LoadModelFrom("client_test.go", "Bob", &doc)
 	assert.T(t, err == nil)
-	fmt.Println(doc.MultiIndexes()["phone_int"])
 	assert.T(t, stringInSlice(strconv.Itoa(12345), doc.MultiIndexes()["phone_int"]))
 	assert.T(t, stringInSlice(strconv.Itoa(67890), doc.MultiIndexes()["phone_int"]))
 
@@ -700,6 +698,76 @@ func TestMultipleMultiIndexesInModel(t * testing.T){
 	err = doc2.Delete()
 	assert.T(t, err == nil)
 
+}
+
+func TestIndexesInModel(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	bucket, _ := client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+
+	// Create object
+	doc := DocumentModel{FieldS: "blurb", FieldF: 123, FieldB: true}
+	err := client.New("client_test.go", "indexesSingle", &doc)
+	assert.T(t, err == nil)
+	indexes := doc.Indexes()
+	indexes["test_int"] = "123"
+	indexes["and_bin"] = "blurb"
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Create a second object
+	doc2 := DocumentModel{FieldS: "blurb", FieldF: 124, FieldB: true}
+	err = client.NewModelIn("client_test.go", "indexes2Single", &doc2)
+	assert.T(t, err == nil)
+	indexes = doc2.Indexes()
+	indexes["test_int"] = "124"
+	indexes["and_bin"] = "blurb"
+	err = doc2.Save()
+	assert.T(t, err == nil)
+
+	// Fetch the object and check
+	err = client.LoadModelFrom("client_test.go", "indexesSingle", &doc)
+	assert.T(t, err == nil)
+	assert.T(t, doc.Indexes()["test_int"] == strconv.Itoa(123))
+	assert.T(t, doc.Indexes()["and_bin"] == "blurb")
+
+	// Get a list of keys using the index queries
+	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
+	if err == nil {
+		t.Logf("2i query returned : %v\n", keys)
+	} else {
+		if err.Error() == "EOF" {
+			t.Log("2i queries over protobuf is not supported, maybe running a pre 1.2 version of Riak - skipping 2i tests.")
+			return
+		} else if err.Error() == "{error,{indexes_not_supported,riak_kv_bitcask_backend}}" {
+			t.Log("2i queries not support on bitcask backend - skipping 2i tests.")
+			return
+		} else if strings.Contains(err.Error(), "indexes_not_supported") {
+			t.Logf("2i queries not supported - skipping 2i tests (%v).\n", err)
+			return
+		}
+		t.Logf("2i query returned error : %v\n", err)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexesSingle")
+	// Get a list of keys using the index range query
+	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 2)
+	assert.T(t, keys[0] == "indexesSingle" || keys[1] == "indexesSingle")
+	assert.T(t, keys[0] == "indexes2Single" || keys[1] == "indexes2Single")
+
+	// Cleanup
+	err = doc.Delete()
+	assert.T(t, err == nil)
+	err = doc2.Delete()
+	assert.T(t, err == nil)
 }
 
 func TestMultiIndexesInModel(t *testing.T) {

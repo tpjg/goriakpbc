@@ -157,7 +157,8 @@ func TestObjectsWithSiblings(t *testing.T) {
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 1")
 	obj.Meta["mymeta"] = "meta1"
-	obj.MultiIndexes["myindex_bin"] = []string{"index1"}
+	obj.Indexes["myindex_bin"] = "index1"
+	obj.MultiIndexes["mymultiindex_bin"] = []string{"multiindex1a", "multiindex1b"}
 	obj.LinkTo(target, "mytag")
 
 	err = obj.Store()
@@ -167,7 +168,8 @@ func TestObjectsWithSiblings(t *testing.T) {
 	obj.ContentType = "text/plain"
 	obj.Data = []byte("data 2")
 	obj.Meta["mymeta"] = "meta2"
-	obj.MultiIndexes["myindex_bin"] = []string{"index2"}
+	obj.Indexes["myindex_bin"] = "index2"
+	obj.MultiIndexes["mymultiindex_bin"] = []string{"multiindex2a", "multiindex2b"}
 	err = obj.Store()
 	assert.T(t, err == nil)
 
@@ -180,7 +182,19 @@ func TestObjectsWithSiblings(t *testing.T) {
 	assert.T(t, len(obj.Siblings[1].Data) > 0)
 	assert.T(t, string(obj.Siblings[0].Data) != string(obj.Siblings[1].Data))
 	assert.T(t, obj.Siblings[0].Meta["mymeta"] != obj.Siblings[1].Meta["mymeta"])
-	assert.T(t, obj.Siblings[0].MultiIndexes["myindex_bin"][0] != obj.Siblings[1].MultiIndexes["myindex_bin"][0])
+
+	// Indexes
+	assert.T(t, obj.Siblings[0].Indexes["myindex_bin"] != obj.Siblings[1].Indexes["myindex_bin"])
+	_, existsMultiIndex1 := obj.Siblings[0].Indexes["mymultiindex_bin"]
+	_, existsMultiIndex2 := obj.Siblings[1].Indexes["mymultiindex_bin"]
+	assert.T(t, existsMultiIndex1 && existsMultiIndex2)
+
+	// Multiindexes
+	assert.T(t, obj.Siblings[0].MultiIndexes["mymultiindex_bin"][0] != obj.Siblings[1].MultiIndexes["mymultiindex_bin"][0])
+	assert.T(t, len(obj.Siblings[0].MultiIndexes["mymultiindex_bin"]) == 2)
+	assert.T(t, len(obj.Siblings[1].MultiIndexes["mymultiindex_bin"]) == 2)
+
+	// Links
 	assert.T(t, len(obj.Siblings[0].Links) != len(obj.Siblings[1].Links))
 
 	// Cleanup
@@ -322,6 +336,135 @@ func TestObjectMetadata(t *testing.T) {
 
 	// Cleanup
 	err = obj.Destroy()
+	assert.T(t, err == nil)
+}
+
+func TestObjectIndexes(t *testing.T) {
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	bucket, _ := client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+
+	// Create object
+	obj := bucket.New("indexes")
+	assert.T(t, obj != nil)
+	obj.ContentType = "text/plain"
+	obj.Data = []byte("indexes to keep")
+	obj.Indexes["test_int"] = strconv.Itoa(123)
+	obj.Indexes["and_bin"] = "blurb"
+	err := obj.Store()
+	assert.T(t, err == nil)
+	// Create a second object
+	obj2 := bucket.New("indexes2")
+	assert.T(t, obj2 != nil)
+	obj2.ContentType = "text/plain"
+	obj2.Data = []byte("indexes to keep")
+	obj2.Indexes["test_int"] = strconv.Itoa(124)
+	obj2.Indexes["and_bin"] = "blurb"
+	err = obj2.Store()
+	assert.T(t, err == nil)
+
+	// Fetch the object and check
+	obj, err = bucket.Get("indexes")
+	assert.T(t, err == nil)
+	assert.T(t, obj != nil)
+	assert.T(t, obj.Indexes["test_int"] == strconv.Itoa(123))
+	assert.T(t, obj.Indexes["and_bin"] == "blurb")
+
+	// Get a list of keys using the index queries
+	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
+	if err == nil {
+		t.Logf("2i query returned : %v\n", keys)
+	} else {
+		if err.Error() == "EOF" {
+			fmt.Println("2i queries over protobuf is not supported, maybe running a pre 1.2 version of Riak - skipping 2i tests.")
+			return
+		} else if err.Error() == "{error,{indexes_not_supported,riak_kv_bitcask_backend}}" {
+			fmt.Println("2i queries not support on bitcask backend - skipping 2i tests.")
+			return
+		} else if strings.Contains(err.Error(), "indexes_not_supported") {
+			t.Logf("2i queries not supported - skipping 2i tests (%v).\n", err)
+			return
+		}
+		t.Logf("2i query returned error : %v\n", err)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexes")
+
+	// Get the server version
+	_, version, err := client.ServerVersion()
+	assert.T(t, err == nil)
+
+	// Get a pages of keys using the index query
+	keys, continuation, err := bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, "")
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "indexes")
+
+	keys, continuation, err = bucket.IndexQueryPage("test_int", strconv.Itoa(123), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v - %v\n", keys, err)
+	}
+	assert.T(t, err == nil)
+	// Only test if continuation really skipped result if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 0)
+	}
+
+	// Get a list of keys using the index range query
+	keys, err = bucket.IndexQueryRange("test_int", strconv.Itoa(120), strconv.Itoa(130))
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 2)
+	assert.T(t, keys[0] == "indexes" || keys[1] == "indexes")
+	assert.T(t, keys[0] == "indexes2" || keys[1] == "indexes2")
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, "")
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	// Only test if limiting results (and sorting) works if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 1)
+		assert.T(t, keys[0] == "indexes")
+	}
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	// Only test if limiting results (and sorting) works if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 1)
+		assert.T(t, keys[0] == "indexes2")
+	}
+
+	// Get a page of keys using the index range query
+	keys, continuation, err = bucket.IndexQueryRangePage("test_int", strconv.Itoa(120), strconv.Itoa(130), 1, continuation)
+	if err == nil {
+		t.Logf("2i range query returned : %v\n", keys)
+	}
+	assert.T(t, err == nil)
+	// Only test if continuation really skipped result if version >= 1.4
+	if version >= "1.4" {
+		assert.T(t, len(keys) == 0)
+	}
+
+	// Cleanup
+	err = obj.Destroy()
+	assert.T(t, err == nil)
+	err = obj2.Destroy()
 	assert.T(t, err == nil)
 }
 
