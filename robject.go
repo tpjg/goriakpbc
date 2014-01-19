@@ -90,8 +90,12 @@ func (obj *RObject) Store() (err error) {
 	// Add the indexes ("MultiIndexes" support)
 	for k, vals := range obj.MultiIndexes {
 		for _, v := range vals {
-			req.Content.Indexes = append(req.Content.Indexes,
-				&pb.RpbPair{Key: []byte(k), Value: []byte(v)})
+			// Tests if the current index value was duplicated
+			// in obj.Indexes
+			if obj.Indexes[k] != v {
+				req.Content.Indexes = append(req.Content.Indexes,
+					&pb.RpbPair{Key: []byte(k), Value: []byte(v)})
+			}
 		}
 	}
 
