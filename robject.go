@@ -204,7 +204,7 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 		for _, meta := range resp.Content[0].Usermeta {
 			obj.Meta[string(meta.Key)] = string(meta.Value)
 		}
-		obj.Indexes = make(map[string]string)
+		obj.Indexes = make(map[string][]string)
 		for _, index := range resp.Content[0].Indexes {
 			if _, ok := obj.Indexes[string(index.Key)]; ok {
 				obj.Indexes[string(index.Key)] = append(obj.Indexes[string(index.Key)],
