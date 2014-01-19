@@ -1,4 +1,4 @@
-riak (goriakpbc) [![Build Status](https://travis-ci.org/tpjg/goriakpbc.png?branch=master)](https://travis-ci.org/tpjg/goriakpbc)
+riak (goriakpbc) [![Build Status](https://travis-ci.org/estebarb/goriakpbc.png?branch=master)](https://travis-ci.org/estebarb/goriakpbc)
 =======
 
 Package riak is a riak-client, inspired by the Ruby riak-client gem and the riakpbc go package from mrb (github.com/mrb/riakpbc).
