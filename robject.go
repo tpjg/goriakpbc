@@ -3,7 +3,7 @@ package riak
 import (
 	"errors"
 
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/estebarb/goriakpbc/pb"
 )
 
 // A Riak link
@@ -19,7 +19,7 @@ type Sibling struct {
 	Data         []byte
 	Links        []Link
 	Meta         map[string]string
-	Indexes      map[string]string
+	MultiIndexes      map[string][]string
 	Vtag         string
 	LastMod      uint32
 	LastModUsecs uint32
@@ -34,7 +34,7 @@ type RObject struct {
 	Data        []byte
 	Links       []Link
 	Meta        map[string]string
-	Indexes     map[string]string
+	MultiIndexes     map[string][]string
 	conflict    bool
 	Siblings    []Sibling
 	Options     []map[string]uint32
@@ -78,11 +78,11 @@ func (obj *RObject) Store() (err error) {
 		i += 1
 	}
 	// Add the indexes
-	req.Content.Indexes = make([]*pb.RpbPair, len(obj.Indexes))
-	i = 0
-	for k, v := range obj.Indexes {
-		req.Content.Indexes[i] = &pb.RpbPair{Key: []byte(k), Value: []byte(v)}
-		i += 1
+	for k, vals := range obj.MultiIndexes {
+		for _, v := range vals {
+			req.Content.Indexes = append(req.Content.Indexes,
+				&pb.RpbPair{Key: []byte(k), Value: []byte(v)})
+		}
 	}
 	// Add the options
 	for _, omap := range obj.Options {
@@ -179,9 +179,14 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 			for _, meta := range content.Usermeta {
 				obj.Siblings[i].Meta[string(meta.Key)] = string(meta.Value)
 			}
-			obj.Siblings[i].Indexes = make(map[string]string)
+			obj.Siblings[i].MultiIndexes = make(map[string][]string)
 			for _, index := range content.Indexes {
-				obj.Siblings[i].Indexes[string(index.Key)] = string(index.Value)
+				if _, ok := obj.Siblings[i].MultiIndexes[string(index.Key)]; ok {
+					obj.Siblings[i].MultiIndexes[string(index.Key)] = append(obj.Siblings[i].MultiIndexes[string(index.Key)],
+						string(index.Value))
+				} else {
+					obj.Siblings[i].MultiIndexes[string(index.Key)] = []string{string(index.Value)}
+				}
 			}
 		}
 	} else if len(resp.Content) == 1 {
@@ -199,9 +204,14 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 		for _, meta := range resp.Content[0].Usermeta {
 			obj.Meta[string(meta.Key)] = string(meta.Value)
 		}
-		obj.Indexes = make(map[string]string)
+		obj.MultiIndexes = make(map[string][]string)
 		for _, index := range resp.Content[0].Indexes {
-			obj.Indexes[string(index.Key)] = string(index.Value)
+			if _, ok := obj.MultiIndexes[string(index.Key)]; ok {
+				obj.MultiIndexes[string(index.Key)] = append(obj.MultiIndexes[string(index.Key)],
+					string(index.Value))
+			} else {
+				obj.MultiIndexes[string(index.Key)] = []string{string(index.Value)}
+			}
 		}
 	}
 }

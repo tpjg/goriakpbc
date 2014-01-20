@@ -616,7 +616,91 @@ func TestNewModelInErrors(t *testing.T) {
 	assert.T(t, err == ModelNotNew) // Second should fail with ModelNotNew error
 }
 
-func TestIndexesInModel(t *testing.T) {
+func stringInSlice(a string, list []string) bool{
+	for _, val := range list {
+		if val == a {
+			return true
+		}
+	}
+	return false
+}
+
+// Testing multiple values for the same secondary index
+func TestMultipleMultiIndexesInModel(t * testing.T){
+	client := setupConnection(t)
+	assert.T(t, client != nil)
+
+	bucket, _ := client.Bucket("client_test.go")
+	assert.T(t, bucket != nil)
+
+	// Create object
+	doc := DocumentModel{FieldS: "blurb", FieldF: 123, FieldB: true}
+	err := client.New("client_test.go", "Bob", &doc)
+	assert.T(t, err == nil)
+	indexes := doc.MultiIndexes()
+	indexes["phone_int"] = []string{"12345", "67890"}
+	err = doc.Save()
+	assert.T(t, err == nil)
+
+	// Create a second object
+	doc2 := DocumentModel{FieldS: "blurb", FieldF: 124, FieldB: true}
+	err = client.NewModelIn("client_test.go", "Alice", &doc2)
+	assert.T(t, err == nil)
+	indexes = doc2.MultiIndexes()
+	indexes["phone_int"] = []string{"12345", "99999"}
+	err = doc2.Save()
+	assert.T(t, err == nil)
+
+	// Fetch the object and check
+	err = client.LoadModelFrom("client_test.go", "Bob", &doc)
+	assert.T(t, err == nil)
+	assert.T(t, stringInSlice(strconv.Itoa(12345), doc.MultiIndexes()["phone_int"]))
+	assert.T(t, stringInSlice(strconv.Itoa(67890), doc.MultiIndexes()["phone_int"]))
+
+	// Get a list of keys using the index queries
+	// Expecting two keys
+	keys, err := bucket.IndexQuery("phone_int", strconv.Itoa(12345))
+	if err == nil {
+		t.Logf("2i query returned : %v\n", keys)
+	} else {
+		if err.Error() == "EOF" {
+			t.Log("2i queries over protobuf is not supported, maybe running a pre 1.2 version of Riak - skipping 2i tests.")
+			return
+		} else if err.Error() == "{error,{indexes_not_supported,riak_kv_bitcask_backend}}" {
+			t.Log("2i queries not support on bitcask backend - skipping 2i tests.")
+			return
+		} else if strings.Contains(err.Error(), "indexes_not_supported") {
+			t.Logf("2i queries not supported - skipping 2i tests (%v).\n", err)
+			return
+		}
+		t.Logf("2i query returned error : %v\n", err)
+	}
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 2)
+	assert.T(t, stringInSlice("Alice", keys))
+	assert.T(t, stringInSlice("Bob", keys))
+	// Get a list of keys using the index queries
+	// Expecting "Bob"
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(67890))
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "Bob")
+
+	// Expecting "Alice"
+	keys, err = bucket.IndexQuery("phone_int", strconv.Itoa(99999))
+	assert.T(t, err == nil)
+	assert.T(t, len(keys) == 1)
+	assert.T(t, keys[0] == "Alice")
+
+	// Cleanup
+	err = doc.Delete()
+	assert.T(t, err == nil)
+	err = doc2.Delete()
+	assert.T(t, err == nil)
+
+}
+
+func TestMultiIndexesInModel(t *testing.T) {
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 
@@ -627,9 +711,9 @@ func TestIndexesInModel(t *testing.T) {
 	doc := DocumentModel{FieldS: "blurb", FieldF: 123, FieldB: true}
 	err := client.New("client_test.go", "indexes", &doc)
 	assert.T(t, err == nil)
-	indexes := doc.Indexes()
-	indexes["test_int"] = "123"
-	indexes["and_bin"] = "blurb"
+	indexes := doc.MultiIndexes()
+	indexes["test_int"] = []string{"123"}
+	indexes["and_bin"] = []string{"blurb"}
 	err = doc.Save()
 	assert.T(t, err == nil)
 
@@ -637,17 +721,17 @@ func TestIndexesInModel(t *testing.T) {
 	doc2 := DocumentModel{FieldS: "blurb", FieldF: 124, FieldB: true}
 	err = client.NewModelIn("client_test.go", "indexes2", &doc2)
 	assert.T(t, err == nil)
-	indexes = doc2.Indexes()
-	indexes["test_int"] = "124"
-	indexes["and_bin"] = "blurb"
+	indexes = doc2.MultiIndexes()
+	indexes["test_int"] = []string{"124"}
+	indexes["and_bin"] = []string{"blurb"}
 	err = doc2.Save()
 	assert.T(t, err == nil)
 
 	// Fetch the object and check
 	err = client.LoadModelFrom("client_test.go", "indexes", &doc)
 	assert.T(t, err == nil)
-	assert.T(t, doc.Indexes()["test_int"] == strconv.Itoa(123))
-	assert.T(t, doc.Indexes()["and_bin"] == "blurb")
+	assert.T(t, doc.MultiIndexes()["test_int"][0] == strconv.Itoa(123))
+	assert.T(t, doc.MultiIndexes()["and_bin"][0] == "blurb")
 
 	// Get a list of keys using the index queries
 	keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
