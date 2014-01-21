@@ -185,9 +185,11 @@ func (c *Client) DeleteFrom(bucketname string, key string, options ...map[string
 // Create a new RObject
 func (b *Bucket) NewObject(key string, options ...map[string]uint32) *RObject {
 	obj := &RObject{Key: key, Bucket: b,
-		Links: make([]Link, 0),
-		Meta:  make(map[string]string), Indexes: make(map[string]string),
-		Options: options}
+		Links:        make([]Link, 0),
+		Meta:         make(map[string]string),
+		Indexes:      make(map[string]string),
+		MultiIndexes: make(map[string][]string),
+		Options:      options}
 	return obj
 }
 

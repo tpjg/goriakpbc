@@ -574,6 +574,16 @@ func (m *Model) Indexes() map[string]string {
 	return m.robject.Indexes
 }
 
+// Return the object's indexes.  This allows an application to set custom secondary
+// indexes on the object for later querying.
+// This allows to put several values to the same tag.
+func (m *Model) MultiIndexes() map[string][]string {
+	if m.robject.MultiIndexes == nil {
+		m.robject.MultiIndexes = make(map[string][]string)
+	}
+	return m.robject.MultiIndexes
+}
+
 // Get a models Key, e.g. needed when Riak has picked it
 func (c *Client) Key(dest interface{}) (key string, err error) {
 	// Check destination
