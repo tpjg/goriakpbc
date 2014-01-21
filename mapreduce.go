@@ -3,7 +3,7 @@ package riak
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/estebarb/goriakpbc/pb"
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 // An object to build a MapReduce job similar to how the Ruby client can

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/estebarb/goriakpbc/json"
+	"github.com/tpjg/goriakpbc/json"
 )
 
 /*

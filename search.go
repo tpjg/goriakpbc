@@ -1,6 +1,6 @@
 package riak
 
-import "github.com/estebarb/goriakpbc/pb"
+import "github.com/tpjg/goriakpbc/pb"
 
 type Search struct {
 	Q       string
