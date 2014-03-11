@@ -567,21 +567,11 @@ func (m *Model) Vclock() (vclock []byte) {
 
 // Return the object's indexes.  This allows an application to set custom secondary
 // indexes on the object for later querying.
-func (m *Model) Indexes() map[string]string {
+func (m *Model) Indexes() map[string][]string {
 	if m.robject.Indexes == nil {
-		m.robject.Indexes = make(map[string]string)
+		m.robject.Indexes = make(map[string][]string)
 	}
 	return m.robject.Indexes
-}
-
-// Return the object's indexes.  This allows an application to set custom secondary
-// indexes on the object for later querying.
-// This allows to put several values to the same tag.
-func (m *Model) MultiIndexes() map[string][]string {
-	if m.robject.MultiIndexes == nil {
-		m.robject.MultiIndexes = make(map[string][]string)
-	}
-	return m.robject.MultiIndexes
 }
 
 // Get a models Key, e.g. needed when Riak has picked it
