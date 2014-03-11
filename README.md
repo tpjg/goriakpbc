@@ -42,6 +42,8 @@ More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/w
 
 ### Secondary indexes (2i)
 
+WARNING: The API has slightly changed and this may break existing applications. The "Indexes" are changed to store multiple values now. Please see https://github.com/tpjg/goriakpbc/issues/71 for some history and a rationale for choosing to break the API in a very clear and predictable way.
+
 Secondary indexes are supported and can be queried for equality using IndexQuery and for a range using IndexQueryRange. Indexes must be added as strings, even when adding a "_int" index. See the example below, taken from riak_test.go:
 
 ```go
@@ -49,7 +51,7 @@ Secondary indexes are supported and can be queried for equality using IndexQuery
 obj, _ := bucket.NewObject("some_key")
 obj.ContentType = "text/plain"
 obj.Data = []byte("testing indexes")
-obj.Indexes["test_int"] = strconv.Itoa(123)
+obj.Indexes["test_int"] = []string{strconv.Itoa(123)}
 err := obj.Store()
 ...
 keys, err := bucket.IndexQuery("test_int", strconv.Itoa(123))
