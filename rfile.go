@@ -105,7 +105,6 @@ func (r *RFile) Seek(offset int64, whence int) (int64, error) {
 
 // Implements the io.Writer interface
 func (r *RFile) Write(p []byte) (n int, err error) {
-	fmt.Printf("Write(%v bytes) - ", len(p))
 	wpos := 0 // Keep track how much of p has been written
 	for wpos < len(p) {
 		k := chunkKey(r.root.Key, r.pos/r.chunk_size)
@@ -113,7 +112,6 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 		if r.pos < r.size || r.size%r.chunk_size != 0 {
 			// If the current chunk happens to be the one we're looking for, then skip loading.
 			if !(r.chunk != nil && r.chunk.Key == k) {
-				fmt.Printf("Getting chunk %v - ", k)
 				r.chunk, err = r.client.GetFrom(r.root.Bucket.name, k, r.root.Options...)
 				if err != nil {
 					return wpos, err
@@ -121,7 +119,6 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 			}
 		} else {
 			// Create a new chunk
-			fmt.Printf("Creating chunk %v - ", k)
 			r.chunk, err = r.client.NewObjectIn(r.root.Bucket.name, k, r.root.Options...)
 			r.chunk.ContentType = r.root.ContentType
 			if err != nil {
@@ -135,32 +132,27 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 		if towrite > (r.chunk_size - cpos) {
 			towrite = r.chunk_size - cpos
 		}
-		fmt.Printf("cpos=%v , towrite=%v , len(chunk)=%v\n", cpos, towrite, len(r.chunk.Data))
 		// Check if the chunk Data is large enough, otherwise write the first part
 		// and then append the last part.
 		check := 0
 		if len(r.chunk.Data) == 0 {
 			// Specialized case for a new chunk
-			fmt.Printf("Creating new data for chunk of %v\n", towrite)
 			r.chunk.Data = make([]byte, towrite)
 			check = copy(r.chunk.Data, p[wpos:wpos+towrite])
 		} else if len(r.chunk.Data) < cpos+towrite {
 			if cpos == len(r.chunk.Data) {
 				// Just append to the chunk
-				fmt.Printf("Appending data to chunk\n")
 				r.chunk.Data = append(r.chunk.Data, p[wpos:wpos+towrite]...)
 				check = towrite // just assume
 			} else {
 				// Copy the part that fits, then append
 				part := len(r.chunk.Data) - cpos
-				fmt.Printf("Copy part %v and then appending %v\n", part, towrite-part)
 				check = copy(r.chunk.Data[cpos:], p[wpos:wpos+part])
 				r.chunk.Data = append(r.chunk.Data, p[wpos+part:wpos+towrite-part]...)
 				check += towrite - part
 			}
 		} else {
 			// Copy to the chunk
-			fmt.Printf("Copying to chunk\n")
 			check = copy(r.chunk.Data[cpos:], p[wpos:wpos+towrite])
 		}
 		if check != towrite {
@@ -179,7 +171,6 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 			if (r.pos / r.chunk_size) > (r.size / r.chunk_size) {
 				// Update the root KV
 				r.root.Meta["chunk_count"] = strconv.Itoa(r.pos/r.chunk_size + 1)
-				fmt.Printf("Updating chunk_count to %v\n", r.root.Meta["chunk_count"])
 				err = r.root.Store()
 				if err != nil {
 					return wpos, nil
@@ -194,7 +185,6 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 
 // Implements the io.Reader interface
 func (r *RFile) Read(p []byte) (n int, err error) {
-	fmt.Printf("Read(%v bytes) - ", len(p))
 	rpos := 0 // Keep track how much of p has been read
 	for rpos < len(p) {
 		k := chunkKey(r.root.Key, r.pos/r.chunk_size)
@@ -202,7 +192,6 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 		if r.pos < r.size || r.size%r.chunk_size != 0 {
 			// If the current chunk happens to be the one we're looking for, then skip loading.
 			if !(r.chunk != nil && r.chunk.Key == k) {
-				fmt.Printf("Getting chunk %v - ", k)
 				r.chunk, err = r.client.GetFrom(r.root.Bucket.name, k, r.root.Options...)
 				if err != nil {
 					return rpos, err
@@ -219,7 +208,6 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 		if toread > (r.chunk_size - cpos) {
 			toread = r.chunk_size - cpos
 		}
-		fmt.Printf("cpos=%v , toread=%v , len(chunk)=%v\n", cpos, toread, len(r.chunk.Data))
 		// Check if the chunk Data is large enough, otherwise read it and return EOF
 		if len(r.chunk.Data[cpos:]) < toread {
 			copy(p, r.chunk.Data[cpos:])

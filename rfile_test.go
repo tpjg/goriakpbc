@@ -1,18 +1,15 @@
 package riak
 
 import (
-	"fmt"
 	"github.com/bmizerany/assert"
 	"io"
 	"testing"
 )
 
 func TestRFile(t *testing.T) {
-	fmt.Printf("Testing experimental RFile stuff\n")
 	client := setupConnection(t)
 	assert.T(t, client != nil)
 	f, err := client.CreateFile("rfile_test.go", "test", "text/plain", 1024)
-	fmt.Printf("CreateFile - %v %v\n", f, err)
 	assert.T(t, err == nil)
 	assert.T(t, f != nil)
 	b, err := f.Write([]byte{'1', '2', '3', '4', '5', '6', '7', '8'})
@@ -95,7 +92,4 @@ func TestRFile(t *testing.T) {
 	assert.T(t, obj.Data[3] == 0)
 	assert.T(t, obj.Data[8] == 'z')
 	obj.Destroy()
-
-	// Cleanup
-	fmt.Printf("End of : Testing experimental RFile stuff\n")
 }
