@@ -21,7 +21,7 @@ func TestRFile(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, b == 1024)
 
-	// Now rewind and check some content
+	// Now rewind and change some content
 	f.Seek(0, 0)
 	b, err = f.Write([]byte{'a', 'b', 'c'}) // Overwriting first three bytes
 	assert.T(t, err == nil)
