@@ -38,7 +38,9 @@ func TestRFile(t *testing.T) {
 	assert.T(t, err == nil)
 	assert.T(t, b == 1)
 
-	// Test the Reader functionality
+	// Test the Reader functionality as well as OpenFile
+	f, err = client.OpenFile("rfile_test.go", "test")
+	assert.T(t, err == nil)
 	buf := make([]byte, 1024)
 	f.Seek(0, 0)
 	// Read the first chunk

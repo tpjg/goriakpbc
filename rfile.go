@@ -55,7 +55,7 @@ func (c *Client) CreateFile(bucketname string, key string, contentType string, c
 
 // Open a File. Will return an error if it does not exist in Riak yet or does
 // not have the correct meta-tags to support File-like operations.
-func (c *Client) OpenFile(bucketname string, key string, contentType string, options ...map[string]uint32) (*RFile, error) {
+func (c *Client) OpenFile(bucketname string, key string, options ...map[string]uint32) (*RFile, error) {
 	root, err := c.GetFrom(bucketname, key, options...)
 	if err != nil {
 		return nil, err
