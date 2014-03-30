@@ -53,6 +53,10 @@ func (c *Client) CreateFile(bucketname string, key string, contentType string, c
 	return &RFile{c, root, nil, chunk_size, 0, 0}, nil
 }
 
+func CreateFile(bucketname string, key string, contentType string, chunk_size int, options ...map[string]uint32) (*RFile, error) {
+	return defaultClient.CreateFile(bucketname, key, contentType, chunk_size, options...)
+}
+
 // Open a File. Will return an error if it does not exist in Riak yet or does
 // not have the correct meta-tags to support File-like operations.
 func (c *Client) OpenFile(bucketname string, key string, options ...map[string]uint32) (*RFile, error) {
@@ -72,7 +76,7 @@ func (c *Client) OpenFile(bucketname string, key string, options ...map[string]u
 	}
 	// Determine the size by looking at the last chunk
 	if chunk_count > 0 {
-		chunk, err := c.GetFrom(bucketname, chunkKey(key, chunk_count-1))
+		chunk, err := c.GetFrom(bucketname, chunkKey(key, chunk_count-1), options...)
 		if err != nil {
 			return nil, ErrorInFile
 		}
@@ -80,6 +84,10 @@ func (c *Client) OpenFile(bucketname string, key string, options ...map[string]u
 	}
 	// Otherwise size is 0
 	return &RFile{c, root, nil, chunk_size, 0, 0}, nil
+}
+
+func OpenFile(bucketname string, key string, options ...map[string]uint32) (*RFile, error) {
+	return defaultClient.OpenFile(bucketname, key, options...)
 }
 
 // Implements the io.Seeker interface
