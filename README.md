@@ -178,6 +178,22 @@ dev.Description = "something else"
 err = dev.SaveAs("newkey")
 ```
 
+### Large object support
+
+Storing really large values (over 10Mb) in Riak is not efficient and is not recommended. If you care about worst case latencies it is recommended to keep values under 100Kb (see http://lists.basho.com/pipermail/riak-users_lists.basho.com/2014-March/014938.html). Changing small parts of a large value is also not efficient because the complete value must be PUT on every change (e.g. when storing files that grow over time like daily log files).
+
+For storing these a value can be split into multiple segments, goriakpbc provides an RFile object for this. This object abstracts the chunking of data and exposes the familiar io.Reader, io.Writer and io.Seeker interfaces similar to os.File.
+
+```go
+src, err := os.Open("file.mp4")
+// Create a file in Riak and split the data into 100Kb chunks
+dst, err := riak.CreateFile("bucket", "key", "video/mp4", 102400)
+
+size, err := io.Copy(dst, src)
+```
+
+Some meta-data, like the segment size and number of segments about the "RFile" will be stored in the value at "key" using the Meta tag feature of Riak, the actual data in segments with keys named "key-00000", "key-000001", et-cetera.
+
 ### Licensing
 
 goriakpbc is distributed under the Apache license, see `LICENSE.txt` file or http://www.apache.org/licenses/LICENSE-2.0 for details. The model_json_*.go files are a copy from the original Go distribution with minor changes and are governed by a BSD-style license, see `LICENSE.go.txt`.
