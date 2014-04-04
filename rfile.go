@@ -216,16 +216,21 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 		if toread > (r.chunk_size - cpos) {
 			toread = r.chunk_size - cpos
 		}
+		// Check what is left to read
+		if toread > (len(p) - rpos) {
+			toread = len(p) - rpos
+		}
 		// Check if the chunk Data is large enough, otherwise read it and return EOF
 		if len(r.chunk.Data[cpos:]) < toread {
-			copy(p, r.chunk.Data[cpos:])
+			copy(p[rpos:], r.chunk.Data[cpos:])
 			return rpos + len(r.chunk.Data[cpos:]), io.EOF
 		}
+
 		// Read the chunk
-		copy(p, r.chunk.Data[cpos:])
+		copy(p[rpos:], r.chunk.Data[cpos:cpos+toread])
 		// Update counters
-		r.pos += len(r.chunk.Data[cpos:])
-		rpos += len(r.chunk.Data[cpos:])
+		r.pos += len(r.chunk.Data[cpos : cpos+toread])
+		rpos += len(r.chunk.Data[cpos : cpos+toread])
 	}
 	// Return the number of bytes written
 	return rpos, nil
