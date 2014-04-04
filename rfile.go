@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 /* The RFile struct stores (large) values in Riak and behaves very similar
@@ -234,4 +235,29 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 	}
 	// Return the number of bytes written
 	return rpos, nil
+}
+
+// Expose ContentType from the underlying root RObject
+func (r *RFile) ContentType() string {
+	return r.root.ContentType
+}
+
+// Expose VTag from the underlying root RObject
+func (r *RFile) VTag() string {
+	return r.root.Vtag
+}
+
+// Expose LastMod from the underlying root RObject
+func (r *RFile) LastMod() uint32 {
+	return r.root.LastMod
+}
+
+// Expose LastModUSecs from the underlying root RObject
+func (r *RFile) LastModUsecs() uint32 {
+	return r.root.LastModUsecs
+}
+
+// Return Last Modified timestamp from the underlying root RObject
+func (r *RFile) LastModified() time.Time {
+	return time.Unix(int64(r.root.LastMod), int64(r.root.LastModUsecs*1000))
 }

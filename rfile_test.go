@@ -4,6 +4,7 @@ import (
 	"github.com/bmizerany/assert"
 	"io"
 	"testing"
+	"time"
 )
 
 func TestRFile(t *testing.T) {
@@ -42,6 +43,13 @@ func TestRFile(t *testing.T) {
 	f, err = client.OpenFile("rfile_test.go", "test")
 	assert.T(t, err == nil)
 	buf := make([]byte, 1024)
+	// Check if the Last Modified time is more-or-less now, should be well within 3 seconds unless something is really wrong with Riak
+	d := time.Now().Sub(f.LastModified())
+	if d > 0 {
+		assert.T(t, d < 3*time.Second)
+	} else {
+		assert.T(t, -d < 3*time.Second)
+	}
 	f.Seek(0, 0)
 	// Read the first chunk
 	b, err = f.Read(buf)
