@@ -27,17 +27,20 @@ type Sibling struct {
 
 // An RObject is an object or document that is or can be stored in Riak
 type RObject struct {
-	Bucket      *Bucket
-	Vclock      []byte
-	Key         string
-	ContentType string
-	Data        []byte
-	Links       []Link
-	Meta        map[string]string
-	Indexes     map[string][]string
-	conflict    bool
-	Siblings    []Sibling
-	Options     []map[string]uint32
+	Bucket       *Bucket
+	Vclock       []byte
+	Key          string
+	ContentType  string
+	Data         []byte
+	Links        []Link
+	Meta         map[string]string
+	Indexes      map[string][]string
+	Vtag         string
+	LastMod      uint32
+	LastModUsecs uint32
+	conflict     bool
+	Siblings     []Sibling
+	Options      []map[string]uint32
 }
 
 // Error definitions
@@ -207,6 +210,9 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 		for _, index := range resp.Content[0].Indexes {
 			obj.Indexes[string(index.Key)] = append(obj.Indexes[string(index.Key)], string(index.Value))
 		}
+		obj.Vtag = string(resp.Content[0].Vtag)
+		obj.LastMod = *resp.Content[0].LastMod
+		obj.LastModUsecs = *resp.Content[0].LastModUsecs
 	}
 }
 
