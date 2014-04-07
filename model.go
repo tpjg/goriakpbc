@@ -652,7 +652,7 @@ func (o *One) SetLink(a One) {
 
 // Test for equality (bucket and key are equal)
 func (o *One) Equal(e One) bool {
-	return o.link.Bucket == e.link.Bucket && o.link.Key == o.link.Key
+	return o.link.Bucket == e.link.Bucket && o.link.Key == e.link.Key
 }
 
 // Test if the link is empty (not set)
