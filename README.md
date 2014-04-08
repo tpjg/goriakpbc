@@ -38,7 +38,7 @@ To install run `go get github.com/tpjg/goriakpbc` and use import as in the examp
 
 ### Documentation
 
-More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library. Full API documentation (automatically generated including protobuf definitions) is available at http://go.pkgdoc.org/github.com/tpjg/goriakpbc or through `go doc`.
+More documentation is available in the Wiki (https://github.com/tpjg/goriakpbc/wiki), below are some examples of the features implemented in this library. Full API documentation (automatically generated including protobuf definitions) is available at http://godoc.org//github.com/tpjg/goriakpbc or through `go doc`.
 
 ### Secondary indexes (2i)
 
