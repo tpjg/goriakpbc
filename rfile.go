@@ -239,3 +239,18 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 func (r *RFile) Size() int {
 	return r.size
 }
+
+// Expose Meta information of the underlying root RObject
+func (r *RFile) Meta() map[string]string {
+	return r.root.Meta
+}
+
+// Expose Indexes of the underlying root RObject
+func (r *RFile) Indexes() map[string][]string {
+	return r.root.Indexes
+}
+
+// Force a write of the underlying root RObject (e.g. after changing Meta and/or Indexes)
+func (r *RFile) Flush() error {
+	return r.root.Store()
+}
