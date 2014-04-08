@@ -20,6 +20,10 @@ func TestRFile(t *testing.T) {
 	b, err = f.Write(extra)
 	assert.T(t, err == nil)
 	assert.T(t, b == 1024)
+	f.Meta()["mymeta"] = "meta1"
+	f.Indexes()["myindex_bin"] = []string{"index1"}
+	f.Indexes()["mymultiindex_bin"] = []string{"multiindex1a", "multiindex1b"}
+	f.Flush()
 
 	// Now rewind and change some content
 	f.Seek(0, 0)
@@ -62,6 +66,10 @@ func TestRFile(t *testing.T) {
 	assert.T(t, buf[2] == 'f')
 	assert.T(t, buf[3] == 0)
 	assert.T(t, buf[8] == 'z')
+	// Check the meta and indexes
+	assert.T(t, f.Meta()["mymeta"] == "meta1")
+	assert.T(t, f.Indexes()["myindex_bin"][0] == "index1")
+	assert.T(t, len(f.Indexes()["mymultiindex_bin"]) == 2)
 
 	// Now there should be three Riak objects: test, test-000000 and test-000001 in the rfile_test.go bucket
 	// Check <test> and cleanup
