@@ -235,3 +235,7 @@ func (r *RFile) Read(p []byte) (n int, err error) {
 	// Return the number of bytes written
 	return rpos, nil
 }
+
+func (r *RFile) Size() int {
+	return r.size
+}
