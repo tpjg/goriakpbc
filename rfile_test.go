@@ -15,6 +15,8 @@ func TestRFile(t *testing.T) {
 	b, err := f.Write([]byte{'1', '2', '3', '4', '5', '6', '7', '8'})
 	assert.T(t, err == nil)
 	assert.T(t, b == 8)
+	// Check the root was updated
+	assert.T(t, f.root.Meta["chunk_count"] == "1")
 	// Add a full chunk
 	extra := make([]byte, 1024)
 	b, err = f.Write(extra)
