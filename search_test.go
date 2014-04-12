@@ -20,7 +20,7 @@ func TestSearch(t *testing.T) {
 		return
 	}
 
-	bucket, err := client.NewBucket("default")
+	bucket, err := client.NewBucket("search_test.go")
 	assert.T(t, err == nil)
 	err = bucket.SetSearch(true)
 	assert.T(t, err == nil)
