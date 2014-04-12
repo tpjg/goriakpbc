@@ -195,6 +195,7 @@ func (obj *RObject) setContent(resp *pb.RpbGetResp) {
 		obj.ContentType = string(resp.Content[0].ContentType)
 		obj.Data = resp.Content[0].Value
 		obj.Links = make([]Link, len(resp.Content[0].Links))
+		obj.Vtag = string(resp.Content[0].Vtag)
 		for j, link := range resp.Content[0].Links {
 			obj.Links[j] = Link{string(link.Bucket),
 				string(link.Key),
