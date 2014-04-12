@@ -176,7 +176,7 @@ func (r *RFile) Write(p []byte) (n int, err error) {
 		wpos += towrite
 		// Update the size if necessary
 		if r.pos > r.size {
-			if (r.pos / r.chunk_size) > (r.size / r.chunk_size) {
+			if ((r.pos / r.chunk_size) > (r.size / r.chunk_size)) || r.root.Meta["chunk_count"] == "0" {
 				// Update the root KV
 				r.root.Meta["chunk_count"] = strconv.Itoa(r.pos/r.chunk_size + 1)
 				err = r.root.Store()
