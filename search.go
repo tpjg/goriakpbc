@@ -15,7 +15,7 @@ type Search struct {
 	Fields  []string
 }
 
-func (c *Client) Search(s *Search) ([]map[string]string, error) {
+func (c *Client) Search(s *Search) ([]map[string][]byte, float32, uint32, error) {
 	fl := make([][]byte, len(s.Fields))
 	for i, f := range s.Fields {
 		fl[i] = []byte(f)
@@ -43,23 +43,23 @@ func (c *Client) Search(s *Search) ([]map[string]string, error) {
 
 	err, conn := c.request(req, rpbSearchQueryReq)
 	if err != nil {
-		return nil, err
+		return nil, 0.0, 0, err
 	}
 
 	resp := &pb.RpbSearchQueryResp{}
 	err = c.response(conn, resp)
 	if err != nil {
-		return nil, err
+		return nil, 0.0, 0, err
 	}
 	docs := resp.GetDocs()
 
-	res := make([]map[string]string, len(docs))
+	res := make([]map[string][]byte, len(docs))
 	for i, doc := range docs {
-		res[i] = make(map[string]string)
+		res[i] = make(map[string][]byte)
 		for _, f := range doc.GetFields() {
-			res[i][string(f.Key)] = string(f.Value)
+			res[i][string(f.Key)] = f.Value
 		}
 	}
 
-	return res, nil
+	return res, resp.GetMaxScore(), resp.GetNumFound(), nil
 }
