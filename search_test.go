@@ -35,9 +35,9 @@ func TestSearch(t *testing.T) {
 		assert.T(t, obj.Vclock != nil)
 	}
 
-	s := &Search{Q: "b", Index: "default", Df: "a", Rows: 10, Fields: []string{"a", "c"}}
+	s := &Search{Q: "b", Index: "search_test.go", Df: "a", Rows: 10, Fields: []string{"a", "c"}}
 	docs, _, _, err := client.Search(s)
-	assert.T(t, err.Error() == "No index <<\"default\">> found.")
+	assert.T(t, (err == nil) || (err.Error() == "No index <<\"default\">> found."))
 
 	// skipping these for now until there's a way to install
 	// a schema via code, or ensure a test env. has a schema:
