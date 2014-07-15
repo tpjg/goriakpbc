@@ -81,6 +81,14 @@ func NewBucket(name string) (*Bucket, error) {
 	return defaultClient.NewBucket(name)
 }
 
+// Return a new bucket using the client connection
+func NewBucketType(btype, name string) (*Bucket, error) {
+	if defaultClient == nil {
+		return nil, NoDefaultClientConnection
+	}
+	return defaultClient.NewBucketType(btype, name)
+}
+
 // Create a MapReduce object that can be used to build a MR query
 func NewMapReduce() *MapReduce {
 	if defaultClient == nil {

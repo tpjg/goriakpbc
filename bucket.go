@@ -6,6 +6,7 @@ import (
 
 // Implements access to a bucket and its properties
 type Bucket struct {
+	bucket_type   string
 	name          string
 	client        *Client
 	nval          uint32
@@ -42,6 +43,15 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 		lastWriteWins: resp.Props.GetLastWriteWins(),
 	}
 
+	return bucket, nil
+}
+
+func (c *Client) NewBucketType(btype, name string) (*Bucket, error) {
+	bucket, err := NewBucket(name)
+	if err != nil {
+		return nil, err
+	}
+	bucket.bucket_type = btype
 	return bucket, nil
 }
 
