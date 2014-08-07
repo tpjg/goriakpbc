@@ -7,10 +7,10 @@ import (
 )
 
 type RDtSet struct {
-	Bucket    *Bucket
-	Key       string
-	Options   []map[string]uint32
-	Value    *pb.DtValue
+	Bucket   *Bucket
+	Key      string
+	Options  []map[string]uint32
+	Value    [][]byte
 	Context  []uint8
 	ToAdd    [][]byte
 	ToRemove [][]byte
@@ -20,7 +20,7 @@ func (set *RDtSet) GetValue() [][]byte {
 	if set.Value == nil {
 		return [][]byte{}
 	}
-	return set.Value.SetValue
+	return set.Value
 }
 
 func (set *RDtSet) Add(value []byte) {
@@ -41,18 +41,30 @@ func (set *RDtSet) Remove(value []byte) {
 	set.ToRemove = append(set.ToRemove, value)
 }
 
-func (set *RDtSet) Store() (err error) {
-	req := &pb.DtUpdateReq{
-		Type:   []byte(set.Bucket.bucket_type),
-		Bucket: []byte(set.Bucket.name),
-		Context: set.Context,
-		Key: []byte(set.Key),
-		Op: &pb.DtOp{
-			SetOp: &pb.SetOp{
-				Adds: set.ToAdd,
-				Removes: set.ToRemove,
-			},
+func (set *RDtSet) ToOp() *pb.DtOp {
+	if len(set.ToAdd) == 0 && len(set.ToRemove) == 0 {
+		return nil
+	}
+	return &pb.DtOp{
+		SetOp: &pb.SetOp{
+			Adds:    set.ToAdd,
+			Removes: set.ToRemove,
 		},
+	}
+}
+
+func (set *RDtSet) Store() (err error) {
+	op := set.ToOp()
+	if op == nil {
+		// nothing to do
+		return nil
+	}
+	req := &pb.DtUpdateReq{
+		Type:    []byte(set.Bucket.bucket_type),
+		Bucket:  []byte(set.Bucket.name),
+		Context: set.Context,
+		Key:     []byte(set.Key),
+		Op:      set.ToOp(),
 	}
 
 	// Add the options
@@ -82,4 +94,3 @@ func (set *RDtSet) Store() (err error) {
 	}
 	return nil
 }
-

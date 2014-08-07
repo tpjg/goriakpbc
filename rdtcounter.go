@@ -5,36 +5,48 @@ import (
 )
 
 type RDtCounter struct {
-	Bucket    *Bucket
-	Key       string
-	Options   []map[string]uint32
-	Value     *pb.DtValue
-	Context   []uint8
-	Incr int64
+	Bucket  *Bucket
+	Key     string
+	Options []map[string]uint32
+	Value   *int64
+	Context []uint8
+	Incr    int64
 }
 
 func (counter *RDtCounter) GetValue() int64 {
 	if counter.Value == nil {
 		return 0
 	}
-	return *counter.Value.CounterValue
+	return *counter.Value
 }
 
 func (counter *RDtCounter) Increment(value int64) {
 	counter.Incr += value
 }
 
-func (counter *RDtCounter) Store() (err error) {
-	req := &pb.DtUpdateReq{
-		Type:   []byte(counter.Bucket.bucket_type),
-		Bucket: []byte(counter.Bucket.name),
-		Context: counter.Context,
-		Key: []byte(counter.Key),
-		Op: &pb.DtOp{
-			CounterOp: &pb.CounterOp{
-				Increment: &counter.Incr,
-			},
+func (counter *RDtCounter) ToOp() *pb.DtOp {
+	if counter.Incr == 0 {
+		return nil
+	}
+	return &pb.DtOp{
+		CounterOp: &pb.CounterOp{
+			Increment: &counter.Incr,
 		},
+	}
+}
+
+func (counter *RDtCounter) Store() (err error) {
+	op := counter.ToOp()
+	if op == nil {
+		// nothing to do
+		return nil
+	}
+	req := &pb.DtUpdateReq{
+		Type:    []byte(counter.Bucket.bucket_type),
+		Bucket:  []byte(counter.Bucket.name),
+		Context: counter.Context,
+		Key:     []byte(counter.Key),
+		Op:      counter.ToOp(),
 	}
 
 	// Add the options
@@ -64,4 +76,3 @@ func (counter *RDtCounter) Store() (err error) {
 	}
 	return nil
 }
-
