@@ -7,11 +7,8 @@ import (
 )
 
 type RDtSet struct {
-	Bucket   *Bucket
-	Key      string
-	Options  []map[string]uint32
+	RDataTypeObject
 	Value    [][]byte
-	Context  []uint8
 	ToAdd    [][]byte
 	ToRemove [][]byte
 }
@@ -59,38 +56,5 @@ func (set *RDtSet) Store() (err error) {
 		// nothing to do
 		return nil
 	}
-	req := &pb.DtUpdateReq{
-		Type:    []byte(set.Bucket.bucket_type),
-		Bucket:  []byte(set.Bucket.name),
-		Context: set.Context,
-		Key:     []byte(set.Key),
-		Op:      set.ToOp(),
-	}
-
-	// Add the options
-	for _, omap := range set.Options {
-		for k, v := range omap {
-			switch k {
-			case "w":
-				req.W = &v
-			case "dw":
-				req.Dw = &v
-			case "pw":
-				req.Pw = &v
-			}
-		}
-	}
-
-	// Send the request
-	err, conn := set.Bucket.client.request(req, dtUpdateReq)
-	if err != nil {
-		return err
-	}
-	// Get response, ReturnHead is true, so we can store the vclock
-	resp := &pb.DtUpdateResp{}
-	err = set.Bucket.client.response(conn, resp)
-	if err != nil {
-		return err
-	}
-	return nil
+	return set.RDataTypeObject.store(op)
 }
