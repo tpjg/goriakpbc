@@ -184,6 +184,61 @@ func (m *RDtMap) AddMap(key string) (e *RDtMap) {
 	return
 }
 
+func (m *RDtMap) RemoveCounter(key string) {
+	e := m.FetchCounter(key)
+	if e == nil {
+		return // nothing to do
+	}
+	t := pb.MapField_COUNTER
+	mk := MapKey{Key: key, Type: t}
+	delete(m.Values, mk)
+	m.ToRemove = append(m.ToRemove, &pb.MapField{Name: []byte(key), Type: &t})
+}
+
+func (m *RDtMap) RemoveSet(key string) {
+	e := m.FetchSet(key)
+	if e == nil {
+		return // nothing to do
+	}
+	t := pb.MapField_SET
+	mk := MapKey{Key: key, Type: t}
+	delete(m.Values, mk)
+	m.ToRemove = append(m.ToRemove, &pb.MapField{Name: []byte(key), Type: &t})
+}
+
+func (m *RDtMap) RemoveRegister(key string) {
+	e := m.FetchRegister(key)
+	if e == nil {
+		return // nothing to do
+	}
+	t := pb.MapField_REGISTER
+	mk := MapKey{Key: key, Type: t}
+	delete(m.Values, mk)
+	m.ToRemove = append(m.ToRemove, &pb.MapField{Name: []byte(key), Type: &t})
+}
+
+func (m *RDtMap) RemoveFlag(key string) {
+	e := m.FetchFlag(key)
+	if e == nil {
+		return // nothing to do
+	}
+	t := pb.MapField_FLAG
+	mk := MapKey{Key: key, Type: t}
+	delete(m.Values, mk)
+	m.ToRemove = append(m.ToRemove, &pb.MapField{Name: []byte(key), Type: &t})
+}
+
+func (m *RDtMap) RemoveMap(key string) {
+	e := m.FetchMap(key)
+	if e == nil {
+		return // nothing to do
+	}
+	t := pb.MapField_MAP
+	mk := MapKey{Key: key, Type: t}
+	delete(m.Values, mk)
+	m.ToRemove = append(m.ToRemove, &pb.MapField{Name: []byte(key), Type: &t})
+}
+
 func (m *RDtMap) Print() {
 	m.PrintInt(0)
 }
@@ -272,6 +327,7 @@ func (m *RDtMap) ToOp() *pb.DtOp {
 			}
 		}
 	}
+	ops.MapOp.Removes = m.ToRemove
 	return ops
 }
 

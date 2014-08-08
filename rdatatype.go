@@ -21,6 +21,7 @@ type RDataTypeObject struct {
 
 type RDataType interface {
 	Store() error
+	Destroy() error
 }
 
 func (b *Bucket) FetchCounter(key string, options ...map[string]uint32) (obj *RDtCounter, err error) {
@@ -81,16 +82,12 @@ func (b *Bucket) fetch(key string, options ...map[string]uint32) (obj RDataType,
 
 	switch *resp.Type {
 	case TYPE_COUNTER:
-		obj = &RDtCounter{RDataTypeObject: RDataTypeObject{Key: key, Bucket: b, Options: options, Context: resp.Context}, Value: resp.Value.CounterValue}
+		obj = &RDtCounter{RDataTypeObject: RDataTypeObject{Key: key, Bucket: b, Options: options, Context: resp.Context}}
 	case TYPE_SET:
-		obj = &RDtSet{RDataTypeObject: RDataTypeObject{Key: key, Bucket: b, Options: options, Context: resp.Context}, Value: resp.Value.SetValue}
+		obj = &RDtSet{RDataTypeObject: RDataTypeObject{Key: key, Bucket: b, Options: options, Context: resp.Context}}
 	case TYPE_MAP:
 		obj = &RDtMap{RDataTypeObject: RDataTypeObject{Key: key, Bucket: b, Options: options, Context: resp.Context}}
-		if resp.Value != nil {
-			obj.(*RDtMap).Init(resp.Value.MapValue)
-		} else {
-			obj.(*RDtMap).Init(nil)
-		}
+		obj.(*RDtMap).Init(nil)
 	default:
 		return nil, errors.New("Type mismatch")
 	}
@@ -98,6 +95,15 @@ func (b *Bucket) fetch(key string, options ...map[string]uint32) (obj RDataType,
 	// If no Content is returned then the object was  not found
 	if resp.Value == nil {
 		return obj, NotFound
+	}
+
+	switch dt := obj.(type) {
+	case *RDtCounter:
+		dt.Value = resp.Value.CounterValue
+	case *RDtSet:
+		dt.Value = resp.Value.SetValue
+	case *RDtMap:
+		dt.Init(resp.Value.MapValue)
 	}
 
 	return obj, nil
@@ -134,6 +140,42 @@ func (m RDataTypeObject) store(op *pb.DtOp) (err error) {
 	// Get response, ReturnHead is true, so we can store the vclock
 	resp := &pb.DtUpdateResp{}
 	err = m.Bucket.client.response(conn, resp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (obj *RDataTypeObject) Destroy() (err error) {
+	req := &pb.RpbDelReq{
+		Type:   []byte(obj.Bucket.bucket_type),
+		Bucket: []byte(obj.Bucket.name),
+		Key:    []byte(obj.Key),
+	}
+	for _, omap := range obj.Options {
+		for k, v := range omap {
+			switch k {
+			case "r":
+				req.R = &v
+			case "pr":
+				req.Pr = &v
+			case "rw":
+				req.Rw = &v
+			case "w":
+				req.W = &v
+			case "dw":
+				req.Dw = &v
+			case "pw":
+				req.Pw = &v
+			}
+		}
+	}
+
+	err, conn := obj.Bucket.client.request(req, rpbDelReq)
+	if err != nil {
+		return err
+	}
+	err = obj.Bucket.client.response(conn, req)
 	if err != nil {
 		return err
 	}
