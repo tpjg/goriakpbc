@@ -265,7 +265,7 @@ func (m *RDtMap) PrintInt(indent int) {
 				for i := 0; i < indent; i++ {
 					fmt.Printf("\t")
 				}
-				fmt.Printf("\t%s\n", v)
+				fmt.Printf("\t\t%s\n", v)
 			}
 			for i := 0; i < indent; i++ {
 				fmt.Printf("\t")

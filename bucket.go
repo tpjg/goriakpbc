@@ -13,6 +13,8 @@ type Bucket struct {
 	allowMult     bool
 	lastWriteWins bool
 	search        bool
+	datatype      string
+	consistent    bool
 }
 
 // Return a new bucket object
@@ -47,11 +49,36 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 }
 
 func (c *Client) NewBucketType(btype, name string) (*Bucket, error) {
-	bucket, err := NewBucket(name)
+	if name == "" || btype == "" {
+		return nil, NoBucketName
+	}
+	req := &pb.RpbGetBucketReq{
+		Bucket: []byte(name),
+		Type:   []byte(btype),
+	}
+	err, conn := c.request(req, rpbGetBucketReq)
+
 	if err != nil {
 		return nil, err
 	}
-	bucket.bucket_type = btype
+	resp := &pb.RpbGetBucketResp{}
+	err = c.response(conn, resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := &Bucket{
+		name:          name,
+		bucket_type:   btype,
+		client:        c,
+		nval:          resp.Props.GetNVal(),
+		allowMult:     resp.Props.GetAllowMult(),
+		lastWriteWins: resp.Props.GetLastWriteWins(),
+		datatype:      string(resp.Props.GetDatatype()),
+		consistent:    resp.Props.GetConsistent(),
+	}
+
 	return bucket, nil
 }
 
