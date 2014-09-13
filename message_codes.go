@@ -45,4 +45,8 @@ const (
 	rpbYokozunaSchemaGetReq   = 58
 	rpbYokozunaSchemaGetResp  = 59
 	rpbYokozunaSchemaPutReq   = 60
+	dtFetchReq                = 80
+	dtFetchResp               = 81
+	dtUpdateReq               = 82
+	dtUpdateResp              = 83
 )

@@ -53,6 +53,7 @@ func (obj *RObject) Store() (err error) {
 	// Create base pb.RpbPutReq
 	t := true
 	req := &pb.RpbPutReq{
+		Type:   []byte(obj.Bucket.bucket_type),
 		Bucket: []byte(obj.Bucket.name),
 		Content: &pb.RpbContent{
 			Value:       []byte(obj.Data),
@@ -123,7 +124,11 @@ func (obj *RObject) Store() (err error) {
 
 // Delete the object from Riak
 func (obj *RObject) Destroy() (err error) {
-	req := &pb.RpbDelReq{Bucket: []byte(obj.Bucket.name), Key: []byte(obj.Key), Vclock: obj.Vclock}
+	req := &pb.RpbDelReq{
+		Type:   []byte(obj.Bucket.bucket_type),
+		Bucket: []byte(obj.Bucket.name),
+		Key:    []byte(obj.Key),
+		Vclock: obj.Vclock}
 	for _, omap := range obj.Options {
 		for k, v := range omap {
 			switch k {
@@ -238,6 +243,7 @@ func (obj *RObject) AddLink(link Link) bool {
 func (b *Bucket) Get(key string, options ...map[string]uint32) (obj *RObject, err error) {
 	t := true
 	req := &pb.RpbGetReq{
+		Type:          []byte(b.bucket_type),
 		Bucket:        []byte(b.name),
 		Key:           []byte(key),
 		NotfoundOk:    &t,

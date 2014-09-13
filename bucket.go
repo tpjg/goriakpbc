@@ -6,12 +6,15 @@ import (
 
 // Implements access to a bucket and its properties
 type Bucket struct {
+	bucket_type   string
 	name          string
 	client        *Client
 	nval          uint32
 	allowMult     bool
 	lastWriteWins bool
 	search        bool
+	datatype      string
+	consistent    bool
 }
 
 // Return a new bucket object
@@ -40,6 +43,41 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 		nval:          resp.Props.GetNVal(),
 		allowMult:     resp.Props.GetAllowMult(),
 		lastWriteWins: resp.Props.GetLastWriteWins(),
+		bucket_type:   `default`,
+	}
+
+	return bucket, nil
+}
+
+func (c *Client) NewBucketType(btype, name string) (*Bucket, error) {
+	if name == "" || btype == "" {
+		return nil, NoBucketName
+	}
+	req := &pb.RpbGetBucketReq{
+		Bucket: []byte(name),
+		Type:   []byte(btype),
+	}
+	err, conn := c.request(req, rpbGetBucketReq)
+
+	if err != nil {
+		return nil, err
+	}
+	resp := &pb.RpbGetBucketResp{}
+	err = c.response(conn, resp)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := &Bucket{
+		name:          name,
+		bucket_type:   btype,
+		client:        c,
+		nval:          resp.Props.GetNVal(),
+		allowMult:     resp.Props.GetAllowMult(),
+		lastWriteWins: resp.Props.GetLastWriteWins(),
+		datatype:      string(resp.Props.GetDatatype()),
+		consistent:    resp.Props.GetConsistent(),
 	}
 
 	return bucket, nil
