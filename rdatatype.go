@@ -181,4 +181,3 @@ func (obj *RDataTypeObject) Destroy() (err error) {
 	}
 	return nil
 }
-

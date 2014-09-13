@@ -6,8 +6,8 @@ import (
 
 type RDtCounter struct {
 	RDataTypeObject
-	Value   *int64
-	Incr    int64
+	Value *int64
+	Incr  int64
 }
 
 func (counter *RDtCounter) GetValue() int64 {

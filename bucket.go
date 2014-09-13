@@ -43,6 +43,7 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 		nval:          resp.Props.GetNVal(),
 		allowMult:     resp.Props.GetAllowMult(),
 		lastWriteWins: resp.Props.GetLastWriteWins(),
+		bucket_type:   `default`,
 	}
 
 	return bucket, nil

@@ -263,7 +263,7 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 		errResp := &pb.RpbErrorResp{}
 		err = proto.Unmarshal(pbmsg, errResp)
 		if err == nil {
-			err = errors.New(string(errResp.Errmsg))
+			err = errors.New(string(errResp.GetErrmsg()))
 		}
 	case rpbPingResp, rpbSetClientIdResp, rpbSetBucketResp, rpbDelResp:
 		return nil
