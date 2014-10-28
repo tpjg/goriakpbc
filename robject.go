@@ -294,6 +294,7 @@ func (c *Client) GetFrom(bucketname string, key string, options ...map[string]ui
 // Reload an object if it has changed (new Vclock)
 func (obj *RObject) Reload() (err error) {
 	req := &pb.RpbGetReq{
+		Type:       []byte(obj.Bucket.bucket_type),
 		Bucket:     []byte(obj.Bucket.name),
 		Key:        []byte(obj.Key),
 		IfModified: obj.Vclock}
