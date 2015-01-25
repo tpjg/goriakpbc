@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync"
 	"syscall"
 	"time"
 
@@ -28,7 +29,6 @@ protoc --go_out=. riak.proto
 
 // riak.Client the client interface
 type Client struct {
-	connected    bool
 	addr         string
 	tcpaddr      *net.TCPAddr
 	readTimeout  time.Duration
@@ -37,6 +37,7 @@ type Client struct {
 	conns        chan *net.TCPConn
 	chanWait     time.Duration
 	connTimeout  time.Duration
+	connMutex    sync.RWMutex
 }
 
 /*
@@ -71,7 +72,7 @@ var (
 
 // Returns a new Client connection
 func NewClient(addr string) *Client {
-	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
+	return NewClientPool(addr, 1)
 }
 
 // Returns a new Client connection. DEPRECATED, use NewClient instead
@@ -81,7 +82,13 @@ func New(addr string) *Client {
 
 // Returns a new Client with multiple connections to Riak
 func NewClientPool(addr string, count int) *Client {
-	return &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
+	okCountSize := count
+	if count < 1 {
+		okCountSize = 1
+	}
+	ret := &Client{addr: addr, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count, conns: make(chan *net.TCPConn, okCountSize)}
+	ret.conns <- nil
+	return ret
 }
 
 // Returns a new Client with multiple connections to Riak. DEPRECATED, use NewClientPool instead
@@ -105,6 +112,8 @@ func (c *Client) Connect() error {
 }
 
 func (c *Client) tcpConnect(dialer *net.Dialer) (err error) {
+	c.connMutex.RLock()
+	defer c.connMutex.RUnlock()
 	tcpaddr, err := net.ResolveTCPAddr("tcp", c.addr)
 	if err != nil {
 		return err
@@ -113,33 +122,42 @@ func (c *Client) tcpConnect(dialer *net.Dialer) (err error) {
 
 	if c.conn_count <= 0 {
 		return BadNumberOfConnections
-	} else if !c.connected {
+	} else if conn := <-c.conns; conn == nil {
 		// Create multiple connections to Riak and send these to the conns channel for later use
-		c.conns = make(chan *net.TCPConn, c.conn_count)
 		for i := 0; i < c.conn_count; i++ {
 			conn, err := dialer.Dial("tcp", tcpaddr.String())
 			if err != nil {
+				// Empty the conns channel before returning, in case an error appeared after a few
+				// successful connections.
+				for j := 0; j < i; j++ {
+					(<-c.conns).Close()
+				}
+				c.conns <- nil
 				return err
 			}
 			c.conns <- conn.(*net.TCPConn)
 		}
+	} else {
+		c.conns <- conn
 	}
-	c.connected = true
 	return nil
 }
 
 // Close the connection
 func (c *Client) Close() {
-	if !c.connected {
+	c.connMutex.Lock()
+	defer c.connMutex.Unlock()
+	if conn := <-c.conns; conn == nil {
+		c.conns <- nil
 		return
 	}
 
 	// Close all the connections
-	for i := 0; i < c.conn_count; i++ {
+	for i := 0; i < c.conn_count-1; i++ {
 		conn := <-c.conns
 		conn.Close()
 	}
-	c.connected = false
+	c.conns <- nil
 }
 
 // Write data to the connection
@@ -165,26 +183,28 @@ func (c *Client) read(conn *net.TCPConn, size int) (response []byte, err error) 
 
 // Gets the TCP connection for a client (either the only one, or one from the pool)
 func (c *Client) getConn() (err error, conn *net.TCPConn) {
-	err = nil
-	// Connect if necessary
-	if !c.connected {
-		err = c.Connect()
-		if err != nil {
-			return err, nil
-		}
-	}
+	timeout := time.After(c.chanWait)
+retry:
 	if c.chanWait > 0 {
 		select {
 		case conn = <-c.conns:
 			break
-		case <-time.After(c.chanWait):
-			err = ChanWaitTimeout
-			break
+		case <-timeout:
+			return ChanWaitTimeout, nil
 		}
 	} else {
 		conn = <-c.conns
 	}
-	return err, conn
+	// Connect if necessary
+	if conn == nil {
+		c.conns <- nil
+		err = c.Connect()
+		if err != nil {
+			return err, nil
+		}
+		goto retry
+	}
+	return nil, conn
 }
 
 // Releases the TCP connection for use by subsequent requests
