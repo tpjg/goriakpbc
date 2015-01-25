@@ -235,12 +235,12 @@ func (c *Client) response(conn *net.TCPConn, response proto.Message) (err error)
 	// Read the response from Riak
 	msgbuf, err := c.read(conn, 5)
 	if err != nil {
+		c.releaseConn(conn)
 		if err == io.EOF {
 			// Connection was closed, try to re-open the connection so subsequent
 			// i/o can succeed. Does report the error for this response.
-			conn, _ = net.DialTCP("tcp", nil, c.tcpaddr)
+			c.Close()
 		}
-		c.releaseConn(conn)
 		return err
 	}
 	defer c.releaseConn(conn)
