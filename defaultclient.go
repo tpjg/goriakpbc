@@ -16,7 +16,7 @@ func ConnectClient(addr string) (err error) {
 	if defaultClient != nil {
 		defaultClient.Close()
 	}
-	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: 1}
+	defaultClient = NewClient(addr)
 	return defaultClient.Connect()
 }
 
@@ -30,7 +30,7 @@ func ConnectClientPool(addr string, count int) (err error) {
 	if defaultClient != nil {
 		defaultClient.Close()
 	}
-	defaultClient = &Client{addr: addr, connected: false, readTimeout: 1e8, writeTimeout: 1e8, conn_count: count}
+	defaultClient = NewClientPool(addr, count)
 	return defaultClient.Connect()
 }
 
