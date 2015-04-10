@@ -21,6 +21,8 @@ func main() {
 		return
 	}
 
+  defer riak.Close()
+
 	bucket, _ := riak.NewBucket("tstriak")
 	obj := bucket.NewObject("tstobj")
 	obj.ContentType = "application/json"
@@ -29,7 +31,6 @@ func main() {
 
 	fmt.Printf("Stored an object in Riak, vclock = %v\n", obj.Vclock)
 
-	riak.Close()
 }
 ```
 
@@ -172,7 +173,7 @@ Note that it is required to have an (anonymous) riak.Model field. If the riak.Mo
 To get an instantiated struct from Riak would then require only a call to the riak.Client "Load" function, and to store it call "Save" or "SaveAs":
 ```go
 err := riak.ConnectClient("127.0.0.1:8087")
-var dev Device 
+var dev Device
 err = riak.LoadModel("abcdefghijklm", &dev)
 dev.Description = "something else"
 err = dev.SaveAs("newkey")
