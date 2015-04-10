@@ -20,8 +20,8 @@ func main() {
 		fmt.Println("Cannot connect, is Riak running?")
 		return
 	}
-
-  defer riak.Close()
+	
+	defer riak.Close()
 
 	bucket, _ := riak.NewBucket("tstriak")
 	obj := bucket.NewObject("tstobj")
