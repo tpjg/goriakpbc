@@ -7,8 +7,8 @@ go:
 services:
   - riak
 install:
-  - riak-admin wait-for-service riak_kv riak@127.0.0.1
-  - riak-admin wait-for-service riak_search riak@127.0.0.1
+  - sudo riak-admin wait-for-service riak_kv riak@127.0.0.1
+  - sudo riak-admin wait-for-service yokozuna riak@127.0.0.1
   - cd $TRAVIS_BUILD_DIR
   - go get -d -t -v
   - go build -v ./...
