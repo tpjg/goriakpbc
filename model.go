@@ -3,6 +3,7 @@ package riak
 import (
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"reflect"
 	"strings"
 
@@ -557,6 +558,11 @@ func (m *Model) Reload() (err error) {
 		}
 	}
 	return
+}
+
+// Return crc32 of the underlying robject data for easy comparison to other models
+func (m *Model) CRC32() uint32 {
+	return crc32.ChecksumIEEE(m.robject.Data)
 }
 
 // Return the object Vclock - this allows an application to detect whether Reload()
