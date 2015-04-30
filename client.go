@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"code.google.com/p/goprotobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tpjg/goriakpbc/pb"
 )
 
