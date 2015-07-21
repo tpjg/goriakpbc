@@ -219,6 +219,9 @@ func (c *Client) request(req proto.Message, code byte) (err error, conn *net.TCP
 	if err != nil {
 		return err, nil
 	}
+	// Make sure connection will be released in the end
+	defer c.releaseConn(conn)
+
 	// Serialize the request using protobuf
 	pbmsg, err := proto.Marshal(req)
 	if err != nil {
@@ -230,11 +233,9 @@ func (c *Client) request(req proto.Message, code byte) (err error, conn *net.TCP
 	msgbuf = append(msgbuf, pbmsg...)
 	// Send to Riak
 	err = c.write(conn, msgbuf)
+
 	// If an error occurred when sending request
 	if err != nil {
-		// Make sure connection will be released in the end
-		defer c.releaseConn(conn)
-
 		var errno syscall.Errno
 
 		// If the error is not recoverable like a broken pipe, close all connections,
