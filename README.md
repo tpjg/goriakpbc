@@ -1,3 +1,8 @@
+## Note: 
+This work has been forked and is **maintained by [Basho](http://basho.com)**, the creators of Riak. You can contribute [to the repository here](https://github.com/basho/riak-go-client) or install with `go get github.com/basho/riak-go-client`.
+
+---
+
 riak (goriakpbc) [![Build Status](https://travis-ci.org/tpjg/goriakpbc.png?branch=master)](https://travis-ci.org/tpjg/goriakpbc)
 =======
 
