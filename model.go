@@ -562,6 +562,9 @@ func (m *Model) Reload() (err error) {
 
 // Return crc32 of the underlying robject data for easy comparison to other models
 func (m *Model) CRC32() uint32 {
+	if m.robject == nil {
+		return 0
+	}
 	return crc32.ChecksumIEEE(m.robject.Data)
 }
 
