@@ -13,6 +13,7 @@ type Bucket struct {
 	allowMult     bool
 	lastWriteWins bool
 	search        bool
+	searchIndex   string
 	datatype      string
 	consistent    bool
 }
@@ -113,9 +114,17 @@ func (b *Bucket) Search() bool {
 	return b.search
 }
 
+// Return the search index property of a bucket
+func (b *Bucket) SearchIndex() string {
+	return b.searchIndex
+}
+
 // Set the search property of a bucket
 func (b *Bucket) SetSearch(search bool) (err error) {
 	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins, Search: &search}
+	if i := b.searchIndex; i != "" {
+		props.SearchIndex = []byte(i)
+	}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
@@ -129,9 +138,31 @@ func (b *Bucket) SetSearch(search bool) (err error) {
 	return nil
 }
 
+// Set the search property of a bucket
+func (b *Bucket) SetSearchIndex(index string) (err error) {
+	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins, Search: &b.search}
+	if i := index; i != "" {
+		props.SearchIndex = []byte(index)
+	}
+	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
+	err, conn := b.client.request(req, rpbSetBucketReq)
+	if err != nil {
+		return err
+	}
+	err = b.client.response(conn, req)
+	if err != nil {
+		return err
+	}
+	b.searchIndex = index
+	return nil
+}
+
 // Set the nval property of a bucket
 func (b *Bucket) SetNVal(nval uint32) (err error) {
 	props := &pb.RpbBucketProps{NVal: &nval, AllowMult: &b.allowMult, LastWriteWins: &b.lastWriteWins, Search: &b.search}
+	if i := b.searchIndex; i != "" {
+		props.SearchIndex = []byte(i)
+	}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
@@ -148,6 +179,9 @@ func (b *Bucket) SetNVal(nval uint32) (err error) {
 // Set the allowMult property of a bucket
 func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &allowMult, LastWriteWins: &b.lastWriteWins, Search: &b.search}
+	if i := b.searchIndex; i != "" {
+		props.SearchIndex = []byte(i)
+	}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {
@@ -164,6 +198,9 @@ func (b *Bucket) SetAllowMult(allowMult bool) (err error) {
 // Set the lastWriteWins property of a bucket
 func (b *Bucket) SetLastWriteWins(lastWriteWins bool) (err error) {
 	props := &pb.RpbBucketProps{NVal: &b.nval, AllowMult: &b.allowMult, LastWriteWins: &lastWriteWins, Search: &b.search}
+	if i := b.searchIndex; i != "" {
+		props.SearchIndex = []byte(i)
+	}
 	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
 	err, conn := b.client.request(req, rpbSetBucketReq)
 	if err != nil {

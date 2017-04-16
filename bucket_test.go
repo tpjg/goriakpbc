@@ -1,10 +1,11 @@
 package riak
 
 import (
-	"github.com/bmizerany/assert"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/bmizerany/assert"
 )
 
 func parseVersion(version string) (major, minor int) {
@@ -44,6 +45,9 @@ func TestBucket(t *testing.T) {
 	err = bucket.SetLastWriteWins(false)
 	assert.T(t, err == nil)
 
+	err = bucket.SetSearchIndex("search_test.go")
+	assert.T(t, (err == nil) || (err.Error()[0:42] == "Invalid bucket properties: [{search_index,"))
+
 	// Read and verify properties
 	bucket2, err := client.NewBucket("bucket_test.go")
 	assert.T(t, err == nil)
@@ -52,6 +56,7 @@ func TestBucket(t *testing.T) {
 
 	if (major > 1) || (major == 1 && minor >= 4) {
 		assert.T(t, bucket2.LastWriteWins() == false)
+		assert.T(t, bucket2.SearchIndex() == "")
 	}
 
 	// Set alternate properties
