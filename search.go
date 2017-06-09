@@ -118,7 +118,7 @@ func (s *Schema) Store() error {
 	return nil
 }
 
-func (c *Client) FetchSchemaByName(schemaName string) (*Schema, error) {
+func (c *Client) FetchSchema(schemaName string) (*Schema, error) {
 	if schemaName == "" {
 		return nil, errors.New("No schema name specified")
 	}
