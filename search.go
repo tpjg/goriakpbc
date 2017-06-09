@@ -139,26 +139,6 @@ func (c *Client) FetchSchemaByName(schemaName string) (*Schema, error) {
 	return &Schema{Name: string(resp.Schema.Name), Content: string(resp.Schema.Content)}, nil
 }
 
-func (c *Client) IsSchemaExistByContent(schemaName string, content string) (bool, error) {
-	schema, err := c.FetchSchemaByName(schemaName)
-	if err != nil {
-		switch err.Error() {
-		case "notfound":
-			return false, nil
-		default:
-			return false, err
-		}
-	}
-
-	if content != "" {
-		if string(schema.Content) == content {
-			return true, nil
-		}
-	}
-
-	return true, nil
-}
-
 func (c *Client) NewSearchIndex(indexName string, schemaName string, nval uint32) (*SearchIndex, error) {
 	if indexName == "" {
 		return nil, errors.New("No index name specified")
