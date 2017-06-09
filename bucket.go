@@ -13,6 +13,7 @@ type Bucket struct {
 	allowMult     bool
 	lastWriteWins bool
 	search        bool
+	searchIndex   string
 	datatype      string
 	consistent    bool
 }
@@ -43,6 +44,8 @@ func (c *Client) NewBucket(name string) (*Bucket, error) {
 		nval:          resp.Props.GetNVal(),
 		allowMult:     resp.Props.GetAllowMult(),
 		lastWriteWins: resp.Props.GetLastWriteWins(),
+		search: 			resp.Props.GetSearch(),
+		searchIndex:	string(resp.Props.GetSearchIndex()),
 		bucket_type:   `default`,
 	}
 
@@ -127,6 +130,27 @@ func (b *Bucket) SetSearch(search bool) (err error) {
 	}
 	b.search = search
 	return nil
+}
+
+// Set the search_index property of a bucket
+func (b *Bucket) SetSearchIndex(searchIndex string) (err error) {
+	props := &pb.RpbBucketProps{SearchIndex: []byte(searchIndex)}
+	req := &pb.RpbSetBucketReq{Bucket: []byte(b.name), Type: []byte(b.bucket_type), Props: props}
+	err, conn := b.client.request(req, rpbSetBucketReq)
+	if err != nil {
+		return err
+	}
+	err = b.client.response(conn, req)
+	if err != nil {
+		return err
+	}
+	b.searchIndex = searchIndex
+	return nil
+}
+
+// Return the search_index property of a bucket
+func (b *Bucket) SearchIndex() string {
+	return b.searchIndex
 }
 
 // Set the nval property of a bucket
