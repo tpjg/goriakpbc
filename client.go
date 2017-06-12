@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/tpjg/goriakpbc/pb"
+	"github.com/atticlab/goriakpbc/pb"
 )
 
 /*
