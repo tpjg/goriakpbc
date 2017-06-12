@@ -1,4 +1,4 @@
-## Note: 
+## Note:
 This work has influenced the client that is **maintained by [Basho](http://basho.com)**, the creators of Riak. You can contribute [to the repository here](https://github.com/basho/riak-go-client) or install with `go get github.com/basho/riak-go-client`.
 
 ---
@@ -25,7 +25,7 @@ func main() {
 		fmt.Println("Cannot connect, is Riak running?")
 		return
 	}
-	
+
 	defer riak.Close()
 
 	bucket, _ := riak.NewBucket("tstriak")
