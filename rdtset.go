@@ -3,7 +3,7 @@ package riak
 import (
 	"bytes"
 
-	"github.com/atticlab/goriakpbc/pb"
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 type RDtSet struct {

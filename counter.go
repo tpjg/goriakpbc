@@ -1,7 +1,7 @@
 package riak
 
 import (
-	"github.com/atticlab/goriakpbc/pb"
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 type Counter struct {

@@ -2,7 +2,7 @@ package riak
 
 import (
 	"fmt"
-	"github.com/atticlab/goriakpbc/pb"
+	"github.com/tpjg/goriakpbc/pb"
 )
 
 const (
